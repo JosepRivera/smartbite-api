@@ -41,3 +41,15 @@ Se desarrolla una **app Android nativa en Kotlin** que usa `NotificationListener
 - El onboarding del dispositivo se hace escaneando un QR generado por Flutter.
 - Los patrones de parseo de cada billetera se almacenan en el backend y son actualizables sin liberar una nueva versión de la app Kotlin.
 - Las notificaciones de pago son solo informativas para el cajero. El cobro siempre lo confirma el cajero manualmente.
+
+## Esquemas de uso del dispositivo listener
+
+El sistema soporta dos configuraciones de celular:
+
+**Celular dedicado en el negocio (recomendado)**
+Un Android fijo en caja con las apps de Yape, Plin y Ágora instaladas. Es la configuración más estable porque el dispositivo siempre está encendido y conectado durante el horario de atención. Ideal cuando el negocio ya tiene un celular de caja o puede destinar uno para este uso.
+
+**Celular del dueño**
+El dueño puede registrar su propio celular como listener si tiene instaladas las apps de Yape/Plin/Ágora. Funciona igual técnicamente, pero puede presentar interrupciones cuando el dueño no está en el local o apaga el celular. Recomendado solo como opción de arranque para negocios que no quieren comprar un segundo dispositivo.
+
+En ambos casos el registro es idéntico: el dueño genera un QR desde Flutter y la app Kotlin lo escanea para guardar la API Key automáticamente. Un mismo dueño puede registrar múltiples dispositivos desde el módulo de gestión de dispositivos.

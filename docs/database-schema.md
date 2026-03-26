@@ -116,7 +116,7 @@ una unidad del producto. Sin recetas no funcionan OPS-2, IA-3 ni REP-3.
 | quantity      | DECIMAL | NOT NULL, CHECK (quantity > 0) | Cantidad del insumo por unidad de producto |
 
 **Constraints:**
-- `uq_recipes_product_ingredient` → UNIQUE sobre `(product_id, ingredient_id)`. Un insumo no puede aparecer dos veces en la misma receta.
+- `uq_recipes_product_ingredient` → UNIQUE sobre `(product_id, ingredient_id)`.
 
 **Índices:**
 - `idx_recipes_product_id` → sobre `product_id`. Obtener la receta completa de un producto.
@@ -138,12 +138,18 @@ El `id` funciona como número de ticket del cliente.
 | user_id       | UUID             | NOT NULL, FK → users(id)      | Empleado que registró la orden (mozo o cajero)                           |
 | status        | sale_status_enum | NOT NULL, DEFAULT 'OPEN'      | `OPEN`, `PAID_CASH`, `PAID_YAPE`, `PAID_PLIN`, `PAID_AGORA`, `CANCELLED` |
 | total         | DECIMAL          | NOT NULL, CHECK (total > 0)   | Monto total de la orden                                                  |
-| customer_name | VARCHAR          | NULL                          | Nombre del cliente. Recomendado para identificar pagos digitales         |
+| table_number  | INT              | NULL                          | Número de mesa. NULL para pedidos para llevar o en mostrador             |
+| customer_name | VARCHAR          | NULL                          | Nombre del cliente. Opcional, solo si el mozo lo registra                |
 | updated_by    | UUID             | NULL, FK → users(id)          | Usuario que realizó la última corrección (OPS-6)                         |
 | cancelled_by  | UUID             | NULL, FK → users(id)          | Usuario que canceló la orden                                             |
 | cancelled_at  | TIMESTAMPTZ      | NULL                          | Fecha y hora de la cancelación                                           |
 | created_at    | TIMESTAMPTZ      | NOT NULL, DEFAULT NOW()       | Fecha y hora de creación de la orden                                     |
 | updated_at    | TIMESTAMPTZ      | NOT NULL                      | Última modificación                                                      |
+
+> **`table_number`:** Campo opcional. Se usa para identificar la mesa del cliente en el ticket y
+> para recuperar órdenes cuando el cliente pierde su ticket (el cajero filtra por mesa +
+> estado OPEN en OPS-6). NULL para pedidos para llevar o cuando el cajero toma la orden
+> directamente en mostrador sin mesa asignada.
 
 > **Estados de la orden:**
 > - `OPEN` → orden registrada, en preparación o lista para cobrar
@@ -152,19 +158,28 @@ El `id` funciona como número de ticket del cliente.
 > - `PAID_PLIN` → cobrada por Plin, confirmada manualmente por el cajero
 > - `PAID_AGORA` → cobrada por Ágora, confirmada manualmente por el cajero
 > - `CANCELLED` → cancelada antes de cobrar. El stock no se toca nunca en este estado
+>   porque el stock solo baja al confirmar el cobro, no al crear la orden.
 
 > **Reglas de cancelación:**
 > - El cajero puede cancelar cualquier orden en `OPEN`
 > - El dueño puede cancelar cualquier orden en `OPEN` sin restricción
 
+> **Flujo de ticket perdido:**
+> El cajero filtra las órdenes por `table_number` y estado `OPEN`. El cliente describe
+> qué consumió y el cajero ubica la orden por los productos. Si dos clientes en la misma
+> mesa pidieron exactamente lo mismo y ambos perdieron su ticket, el cajero puede cobrar
+> cualquiera de las dos órdenes ya que el monto es idéntico.
+
 > **Flujo de pago digital:**
-> El cajero consulta la sección de notificaciones recibidas (tabla `payment_notifications`),
-> verifica el nombre del remitente con el cliente presente en caja, busca la orden
-> por ID de ticket y la marca como pagada seleccionando el método correspondiente.
+> El cliente paga por Yape/Plin/Ágora y se acerca a caja mostrando el comprobante en su
+> celular. El cajero filtra las notificaciones recibidas (tabla `payment_notifications`) por
+> la billetera correspondiente, verifica el nombre del remitente con el comprobante del
+> cliente, busca la orden por ID de ticket o por número de mesa y la marca como pagada.
 
 **Índices:**
 - `idx_sales_status` → sobre `status`. Filtrar órdenes abiertas en la pantalla del cajero.
-- `idx_sales_user_id` → sobre `user_id`. Historial de órdenes por empleado (OPS-6, REP-2).
+- `idx_sales_table_number` → sobre `table_number`. Filtrar órdenes por mesa en OPS-6.
+- `idx_sales_user_id` → sobre `user_id`. Historial de órdenes por empleado (OPS-6).
 - `idx_sales_created_at` → sobre `created_at`. Reportes y cierres de caja por fecha.
 
 **ON DELETE:**
@@ -198,6 +213,8 @@ de la orden para que un cambio de precio futuro no altere el historial.
 
 ### expenses
 Gastos operativos del negocio. Base del cálculo de ganancia en REP-4.
+Registrar un gasto no actualiza el stock automáticamente — son operaciones
+separadas. El gasto es un movimiento financiero; el stock es el inventario físico.
 
 | Columna     | Tipo        | Constraints                   | Descripción                                     |
 | ----------- | ----------- | ----------------------------- | ----------------------------------------------- |
@@ -234,30 +251,23 @@ sobre esta tabla a nivel de API ni de base de datos.
 | parent_close_id | UUID        | NULL, FK → cash_closes(id)    | Referencia al cierre original si es un ajuste      |
 | created_at      | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()       | Fecha y hora de generación                         |
 
-> ¹ **Desnormalización intencional:** `total_income` y `net_profit` son atributos
-> derivados que técnicamente violan la 3FN. Se persisten de forma deliberada para
-> preservar la integridad del registro histórico inmutable: una vez generado el
-> cierre, estos valores quedan congelados en el instante del cálculo y no pueden
-> quedar desincronizados si en el futuro se corrigieran datos relacionados.
+> ¹ **Desnormalización intencional:** `total_income` y `net_profit` violan la 3FN de forma
+> deliberada para preservar la integridad del registro histórico inmutable.
 > Ver `decisions/0005-cash-close-immutability.md`.
 
 **Constraints:**
 - `uq_cash_closes_date` → UNIQUE sobre `date`. Solo se permite un cierre por día.
 
-**Índices:**
-- `idx_cash_closes_date` → sobre `date`. Consulta de cierres por fecha en REP-2.
-
 **ON DELETE:**
-- `closed_by` → RESTRICT. No se puede eliminar un usuario que haya generado cierres.
-- `parent_close_id` → RESTRICT. No se puede eliminar un cierre que tenga ajustes.
+- `closed_by` → RESTRICT.
+- `parent_close_id` → RESTRICT.
 
 ---
 
 ### payment_notifications
 Notificaciones de pago recibidas por el listener Kotlin (PAG-1). Son
 puramente informativas: el cajero las consulta como referencia visual para
-confirmar pagos digitales de forma manual. No tienen lógica de matching
-automático ni se relacionan directamente con `sales`.
+confirmar pagos digitales de forma manual.
 
 | Columna         | Tipo                | Constraints                   | Descripción                                         |
 | --------------- | ------------------- | ----------------------------- | --------------------------------------------------- |
@@ -270,20 +280,18 @@ automático ni se relacionan directamente con `sales`.
 | created_at      | TIMESTAMPTZ         | NOT NULL, DEFAULT NOW()       | Fecha y hora en que se recibió la notificación      |
 
 > Esta tabla no tiene FK hacia `sales` de forma intencional. El cajero conecta
-> visualmente la notificación con la orden por nombre y monto. La relación
-> es operativa (la hace el cajero en caja), no estructural (no la hace la BD).
+> visualmente la notificación con la orden por nombre, monto y número de mesa.
+> La relación es operativa (la hace el cajero), no estructural (no la hace la BD).
 
 **Índices:**
-- `idx_payment_notifications_notification_id` → UNIQUE sobre `notification_id`. Idempotencia.
-- `idx_payment_notifications_is_reviewed` → sobre `is_reviewed`. Filtrar notificaciones pendientes.
-- `idx_payment_notifications_created_at` → sobre `created_at`. Notificaciones del día actual.
+- `idx_payment_notifications_notification_id` → UNIQUE. Idempotencia.
+- `idx_payment_notifications_is_reviewed` → sobre `is_reviewed`.
+- `idx_payment_notifications_created_at` → sobre `created_at`.
 
 ---
 
 ### device_tokens
 Dispositivos Android autorizados para enviar notificaciones de pago (PAG-1).
-No está ligado a un usuario específico sino al negocio, pero registra quién
-lo autorizó para trazabilidad.
 
 | Columna       | Tipo        | Constraints                   | Descripción                                             |
 | ------------- | ----------- | ----------------------------- | ------------------------------------------------------- |
@@ -296,17 +304,17 @@ lo autorizó para trazabilidad.
 | created_at    | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()       | Fecha de registro                                       |
 
 **Índices:**
-- `idx_device_tokens_api_key_hash` → UNIQUE sobre `api_key_hash`. Validación de la API Key en cada POST del listener.
-- `idx_device_tokens_is_active` → sobre `is_active`. Verificar si el dispositivo está activo.
+- `idx_device_tokens_api_key_hash` → UNIQUE. Validación de la API Key en cada POST.
+- `idx_device_tokens_is_active` → sobre `is_active`.
 
 **ON DELETE:**
-- `registered_by` → RESTRICT. No se puede eliminar el dueño que registró el dispositivo.
+- `registered_by` → RESTRICT.
 
 ---
 
 ### reference_baselines
 Promedios de referencia del sector para cuando IA-2 tiene menos de 14 días
-de datos propios. Configurable por el dueño desde el backend.
+de datos propios.
 
 | Columna     | Tipo        | Constraints                    | Descripción                                  |
 | ----------- | ----------- | ------------------------------ | -------------------------------------------- |
@@ -317,16 +325,15 @@ de datos propios. Configurable por el dueño desde el backend.
 | updated_at  | TIMESTAMPTZ | NOT NULL                       | Última vez que se actualizó el valor         |
 
 **Constraints:**
-- `uq_reference_baselines_product_day` → UNIQUE sobre `(product_id, day_of_week)`. Un producto tiene un solo valor de referencia por día de la semana.
+- `uq_reference_baselines_product_day` → UNIQUE sobre `(product_id, day_of_week)`.
 
 **ON DELETE:**
-- `product_id` → CASCADE. Si se elimina el producto, se eliminan sus referencias.
+- `product_id` → CASCADE.
 
 ---
 
 ### daily_production_plans
-Plan de producción diario precalculado por el cron job de las 6 a. m.
-Los clientes leen esta tabla directamente; no ejecutan IA en tiempo real.
+Plan de producción diario precalculado por el cron job de las 6 a.m.
 
 | Columna    | Tipo        | Constraints                    | Descripción                      |
 | ---------- | ----------- | ------------------------------ | -------------------------------- |
@@ -337,13 +344,13 @@ Los clientes leen esta tabla directamente; no ejecutan IA en tiempo real.
 | created_at | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()        | Fecha de generación              |
 
 **Constraints:**
-- `uq_daily_production_plans_date_product` → UNIQUE sobre `(date, product_id)`. Un producto tiene un solo plan por día.
+- `uq_daily_production_plans_date_product` → UNIQUE sobre `(date, product_id)`.
 
 **Índices:**
-- `idx_daily_production_plans_date` → sobre `date`. Leer el plan del día actual.
+- `idx_daily_production_plans_date` → sobre `date`.
 
 **ON DELETE:**
-- `product_id` → CASCADE. Si se elimina el producto, se eliminan sus planes.
+- `product_id` → CASCADE.
 
 ---
 
@@ -359,17 +366,17 @@ Los clientes leen esta tabla directamente; no ejecutan IA en tiempo real.
 
 ## Relaciones principales
 
-| Tabla origen | Tabla destino          | Tipo   | ON DELETE | Descripción                                     |
-| ------------ | ---------------------- | ------ | --------- | ----------------------------------------------- |
-| users        | refresh_tokens         | 1 a N  | CASCADE   | Un usuario puede tener varias sesiones activas  |
-| users        | sales                  | 1 a N  | RESTRICT  | Un usuario registra muchas órdenes              |
-| users        | expenses               | 1 a N  | RESTRICT  | Un usuario registra muchos gastos               |
-| users        | cash_closes            | 1 a N  | RESTRICT  | Un usuario genera muchos cierres de caja        |
-| users        | device_tokens          | 1 a N  | RESTRICT  | Un dueño puede registrar varios dispositivos    |
-| sales        | sale_items             | 1 a N  | CASCADE   | Una orden tiene uno o más ítems                 |
-| products     | sale_items             | 1 a N  | RESTRICT  | Un producto aparece en muchas órdenes           |
-| products     | recipes                | 1 a N  | CASCADE   | Un producto tiene una receta con varios insumos |
-| ingredients  | recipes                | 1 a N  | RESTRICT  | Un insumo aparece en varias recetas             |
-| cash_closes  | cash_closes            | 1 a 1? | RESTRICT  | Un cierre de ajuste referencia al original      |
-| products     | reference_baselines    | 1 a N  | CASCADE   | Un producto tiene referencias por día           |
-| products     | daily_production_plans | 1 a N  | CASCADE   | Un producto aparece en varios planes diarios    |
+| Tabla origen | Tabla destino          | Tipo  | ON DELETE | Descripción                                     |
+| ------------ | ---------------------- | ----- | --------- | ----------------------------------------------- |
+| users        | refresh_tokens         | 1 a N | CASCADE   | Un usuario puede tener varias sesiones activas  |
+| users        | sales                  | 1 a N | RESTRICT  | Un usuario registra muchas órdenes              |
+| users        | expenses               | 1 a N | RESTRICT  | Un usuario registra muchos gastos               |
+| users        | cash_closes            | 1 a N | RESTRICT  | Un usuario genera muchos cierres de caja        |
+| users        | device_tokens          | 1 a N | RESTRICT  | Un dueño puede registrar varios dispositivos    |
+| sales        | sale_items             | 1 a N | CASCADE   | Una orden tiene uno o más ítems                 |
+| products     | sale_items             | 1 a N | RESTRICT  | Un producto aparece en muchas órdenes           |
+| products     | recipes                | 1 a N | CASCADE   | Un producto tiene una receta con varios insumos |
+| ingredients  | recipes                | 1 a N | RESTRICT  | Un insumo aparece en varias recetas             |
+| cash_closes  | cash_closes            | 1 a 1 | RESTRICT  | Un cierre de ajuste referencia al original      |
+| products     | reference_baselines    | 1 a N | CASCADE   | Un producto tiene referencias por día           |
+| products     | daily_production_plans | 1 a N | CASCADE   | Un producto aparece en varios planes diarios    |
