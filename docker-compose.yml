@@ -1,0 +1,77 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: smartbite-postgres-dev
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./prisma/sql:/docker-entrypoint-initdb.d   # ejecuta 01_views.sql, 02_roles.sql, 03_indexes.sql al crear el contenedor
+    networks:
+      - smartbite-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: smartbite-app-dev
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+      - "9229:9229"     # puerto de debugging Node.js
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${PORT}
+      # Auth
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL}
+      JWT_REFRESH_TOKEN_TTL: ${JWT_REFRESH_TOKEN_TTL}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS}
+      # CORS
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      # IA
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
+      CLAUDE_TIMEOUT_INTERACTIVE: ${CLAUDE_TIMEOUT_INTERACTIVE:-10000}
+      CLAUDE_TIMEOUT_BATCH: ${CLAUDE_TIMEOUT_BATCH:-30000}
+      # Voz
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_WHISPER_MODEL: ${GROQ_WHISPER_MODEL:-whisper-large-v3-turbo}
+      GROQ_TIMEOUT: ${GROQ_TIMEOUT:-15000}
+    volumes:
+      - ./src:/app/src              # hot-reload: cambios en src/ se reflejan al instante
+      - ./prisma:/app/prisma        # hot-reload: cambios en schema.prisma disponibles
+      - ./generated:/app/generated  # cliente de Prisma generado fuera de node_modules (Prisma 6+)
+      - /app/node_modules           # excluye node_modules del host para evitar conflictos
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - smartbite-network
+    command: >
+      sh -c "
+        echo '[SmartBite] Aplicando migraciones de Prisma...' &&
+        pnpm prisma migrate deploy &&
+        echo '[SmartBite] Generando cliente de Prisma...' &&
+        pnpm prisma generate &&
+        echo '[SmartBite] Listo. Iniciando servidor en modo watch...' &&
+        pnpm run start:dev
+      "
+
+volumes:
+  postgres_dev_data:
+
+networks:
+  smartbite-network:
