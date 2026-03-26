@@ -3,18 +3,17 @@
 # SmartBite API
 
 [![NestJS](https://img.shields.io/badge/NestJS-v11-E0234E?style=for-the-badge&logo=nestjs&logoColor=white&labelColor=E0234E&color=2d2d2d)](https://nestjs.com/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=3178C6&color=2d2d2d)](https://www.typescriptlang.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white&labelColor=4169E1&color=2d2d2d)](https://www.postgresql.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-V6-3178C6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=3178C6&color=2d2d2d)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-V16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white&labelColor=4169E1&color=2d2d2d)](https://www.postgresql.org/)
 [![Prisma](https://img.shields.io/badge/Prisma-v7-2D3748?style=for-the-badge&logo=prisma&logoColor=white&labelColor=2D3748&color=2d2d2d)](https://www.prisma.io/)
-[![Node.js](https://img.shields.io/badge/Node.js-v20-339933?style=for-the-badge&logo=nodedotjs&logoColor=white&labelColor=339933&color=2d2d2d)](https://nodejs.org/)
-[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white&labelColor=2496ED&color=2d2d2d)](https://www.docker.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-v24-339933?style=for-the-badge&logo=nodedotjs&logoColor=white&labelColor=339933&color=2d2d2d)](https://nodejs.org/)
+[![Docker](https://img.shields.io/badge/Docker-v29-2496ED?style=for-the-badge&logo=docker&logoColor=white&labelColor=2496ED&color=2d2d2d)](https://www.docker.com/)
 [![pnpm](https://img.shields.io/badge/pnpm-v10-F69220?style=for-the-badge&logo=pnpm&logoColor=white&labelColor=F69220&color=2d2d2d)](https://pnpm.io/)
 [![Biome](https://img.shields.io/badge/Biome-v2-60A5FA?style=for-the-badge&logo=biome&logoColor=white&labelColor=60A5FA&color=2d2d2d)](https://biomejs.dev/)
 [![Vitest](https://img.shields.io/badge/Vitest-v4-6E9F18?style=for-the-badge&logo=vitest&logoColor=white&labelColor=6E9F18&color=2d2d2d)](https://vitest.dev/)
 [![JWT](https://img.shields.io/badge/JWT-Auth-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white&labelColor=000000&color=2d2d2d)](https://jwt.io/)
-[![Anthropic](https://img.shields.io/badge/Claude-API-CC785C?style=for-the-badge&logo=anthropic&logoColor=white&labelColor=CC785C&color=2d2d2d)](https://www.anthropic.com/)
-[![Groq](https://img.shields.io/badge/Groq-Whisper-F55036?style=for-the-badge&logo=groq&logoColor=white&labelColor=F55036&color=2d2d2d)](https://groq.com/)
-[![MIT License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge&logo=opensourceinitiative&logoColor=white&labelColor=3DA639&color=2d2d2d)](./LICENSE)
+[![Anthropic](https://img.shields.io/badge/Claude-V4.5-CC785C?style=for-the-badge&logo=anthropic&logoColor=white&labelColor=CC785C&color=2d2d2d)](https://www.anthropic.com/)
+[![Groq](https://img.shields.io/badge/Groq-Whisper-F55036?style=for-the-badge&logo=lightning&logoColor=white&labelColor=F55036&color=2d2d2d)](https://groq.com/)
 
 **Backend del sistema de gestión inteligente para restaurantes.**  
 Gestión de ventas, stock, recetas, reportes financieros, predicción de demanda
@@ -47,7 +46,6 @@ y pagos digitales con Yape, Plin y Ágora.
     - [Tests](#tests)
     - [Calidad de código](#calidad-de-código)
   - [Documentación de la API](#documentación-de-la-api)
-  - [Licencia](#licencia)
 
 ---
 
@@ -336,10 +334,3 @@ La documentación detallada de cada módulo está en `docs/api/`:
 | [`docs/api/04-ai.md`](./docs/api/04-ai.md)             | Inteligencia artificial             |
 | [`docs/api/05-voice.md`](./docs/api/05-voice.md)       | Registro por voz                    |
 | [`docs/api/06-payments.md`](./docs/api/06-payments.md) | Pagos digitales                     |
-
----
-
-## Licencia
-
-Este proyecto está bajo la licencia **MIT**. Ver el archivo
-[LICENSE](./LICENSE) para más detalles.
