@@ -4,12 +4,12 @@
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"outDir": "./dist",
-		"baseUrl": "./",
 		"paths": {
-			"@/*": ["src/*"]
+			"@/*": ["./src/*"]
 		},
-		"types": ["vitest/globals"],
-		"incremental": false
+		"types": ["node", "vitest/globals"],
+		"incremental": false,
+		"noUncheckedSideEffectImports": false
 	},
 	"include": ["src/**/*", "test/**/*", "prisma/seed.ts"],
 	"exclude": ["node_modules", "dist"]

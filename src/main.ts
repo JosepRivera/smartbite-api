@@ -1,8 +1,50 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { NestFactory } from "@nestjs/core";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import helmet from "helmet";
+import { cleanupOpenApiDoc, ZodValidationPipe } from "nestjs-zod";
+import { env } from "@/config/env";
+import { AppModule } from "./app.module";
+import { TransformInterceptor } from "./common/transform.interceptor";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  await app.listen(process.env.PORT ?? 3000);
+	const app = await NestFactory.create(AppModule);
+
+	// Prefijo global — todos los endpoints quedan en /api/v1/...
+	app.setGlobalPrefix("api/v1");
+
+	// Seguridad HTTP headers
+	app.use(helmet());
+
+	// CORS — Flutter web en desarrollo, ajustar para producción
+	app.enableCors({
+		origin: env.CORS_ORIGIN ?? true,
+		credentials: true,
+		methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+		allowedHeaders: ["Content-Type", "Authorization", "X-API-Key"],
+	});
+
+	app.useGlobalPipes(new ZodValidationPipe());
+
+	app.useGlobalInterceptors(new TransformInterceptor());
+
+	// Swagger / OpenAPI
+	const config = new DocumentBuilder()
+		.setTitle("SmartBite API")
+		.setDescription("Backend del sistema de gestión inteligente para restaurantes — Tecsup 2026-1")
+		.setVersion("1.0")
+		.addServer(`http://localhost:${env.PORT}`, "Development")
+		.addBearerAuth({ type: "http", scheme: "bearer", bearerFormat: "JWT" }, "access-token")
+		.addApiKey({ type: "apiKey", in: "header", name: "X-API-Key" }, "api-key")
+		.build();
+
+	const document = SwaggerModule.createDocument(app, config);
+
+	SwaggerModule.setup("api/docs", app, cleanupOpenApiDoc(document));
+
+	await app.listen(env.PORT);
+
+	console.log(`Server running on http://localhost:${env.PORT}`);
+	console.log(`Swagger docs at http://localhost:${env.PORT}/api/docs`);
 }
+
 bootstrap();
