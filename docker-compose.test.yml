@@ -1,0 +1,64 @@
+services:
+  postgres-test:
+    image: postgres:17-alpine
+    container_name: smartbite-postgres-test
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-smartbite_test}
+    networks:
+      - smartbite-test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-smartbite_test}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: smartbite-app-test
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-test:5432/${POSTGRES_DB:-smartbite_test}?schema=public
+      NODE_ENV: test
+      PORT: 3001
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL}
+      JWT_REFRESH_TOKEN_TTL: ${JWT_REFRESH_TOKEN_TTL}
+      BCRYPT_ROUNDS: 4
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_WHISPER_MODEL: ${GROQ_WHISPER_MODEL:-whisper-large-v3-turbo}
+    volumes:
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      - ./generated:/app/generated
+      - ./test:/app/test
+      - /app/node_modules
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    networks:
+      - smartbite-test-network
+    command: >
+      sh -c "
+        echo '[SmartBite Test] Aplicando migraciones...' &&
+        pnpm prisma migrate deploy &&
+        echo '[SmartBite Test] Generando cliente...' &&
+        pnpm prisma generate &&
+        echo '[SmartBite Test] Aplicando vistas, permisos e índices...' &&
+        pnpm prisma db execute --file prisma/sql/01_views.sql &&
+        pnpm prisma db execute --file prisma/sql/02_roles.sql &&
+        pnpm prisma db execute --file prisma/sql/03_indexes.sql &&
+        echo '[SmartBite Test] Corriendo tests e2e...' &&
+        pnpm vitest run --project e2e --reporter=verbose
+      "
+
+networks:
+  smartbite-test-network:
+    driver: bridge

@@ -8,10 +8,28 @@ updates:
       time: "09:00"
       timezone: "America/Lima"
     open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
     ignore:
       - dependency-name: "node"
         update-types: ["version-update:semver-major"]
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
-    labels:
-      - "dependencies"
+    groups:
+      nestjs:
+        patterns:
+          - "@nestjs/*"
+      prisma:
+        patterns:
+          - "prisma"
+          - "@prisma/*"
+      testing:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+          - "supertest"
+          - "@types/supertest"
+      types-and-lint:
+        patterns:
+          - "@types/*"
+          - "@biomejs/*"
