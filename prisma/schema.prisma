@@ -279,7 +279,6 @@ model DailyProductionPlan {
 
 // ─────────────────────────────────────────────
 // Vistas SQL — creadas por prisma/sql/01_views.sql via Docker
-// previewFeature "views" requerido en el generator
 // ─────────────────────────────────────────────
 
 view DailySummary {
