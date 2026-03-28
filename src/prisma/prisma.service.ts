@@ -1,7 +1,7 @@
 import { Injectable, type OnModuleDestroy, type OnModuleInit } from "@nestjs/common";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../generated/prisma/client";
 import { env } from "../config/env";
+import { PrismaClient } from "../generated/prisma/client";
 
 export type {
 	CashClose as PrismaCashClose,
@@ -22,7 +22,7 @@ export type {
 	SaleItem as PrismaSaleItem,
 	SaleStatus,
 	User as PrismaUser,
-} from "../../generated/prisma/client";
+} from "../generated/prisma/client";
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
