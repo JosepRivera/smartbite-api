@@ -4,7 +4,7 @@ import helmet from "helmet";
 import { cleanupOpenApiDoc, ZodValidationPipe } from "nestjs-zod";
 import { env } from "@/config/env";
 import { AppModule } from "./app.module";
-import { TransformInterceptor } from "./common/transform.interceptor";
+import { TransformInterceptor } from "./common/interceptors/transform.interceptor";
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule);

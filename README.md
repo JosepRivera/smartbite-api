@@ -75,8 +75,8 @@ de Software, 2026-1, línea StartUp.
 
 | Módulo                         | Descripción                                                         | Estado          |
 | ------------------------------ | ------------------------------------------------------------------- | --------------- |
-| **AUTH-1** Autenticación JWT   | Login, logout y renovación de tokens con refresh tokens             | 🔧 En desarrollo |
-| **AUTH-2** Gestión de personal | El dueño crea y administra cuentas de empleados con roles           | 🔧 En desarrollo |
+| **AUTH-1** Autenticación JWT   | Login, logout y renovación de tokens con refresh tokens             | ✅ Completado |
+| **AUTH-2** Gestión de personal | El dueño crea y administra cuentas de empleados con roles           | ✅ Completado |
 | **OPS-1** Productos            | CRUD de productos y precios de la carta                             | 🔧 En desarrollo |
 | **OPS-2** Insumos y stock      | CRUD de insumos con descuento automático al confirmar ventas        | 🔧 En desarrollo |
 | **OPS-3** Recetas              | Relación producto-insumo que alimenta el stock y el MRP             | 🔧 En desarrollo |

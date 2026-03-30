@@ -4,6 +4,17 @@
 
 ---
 
+## Valores de referencia (usados en todos los ejemplos)
+
+| Variable        | Valor                                        |
+| --------------- | -------------------------------------------- |
+| `OWNER_ID`      | `a1b2c3d4-e5f6-7890-abcd-ef1234567890`       |
+| `CASHIER_ID`    | `b2c3d4e5-f6a7-8901-bcde-f12345678901`       |
+| `ACCESS_TOKEN`  | `eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJiMmMzZDRlNS1mNmE3LTg5MDEtYmNkZS1mMTIzNDU2Nzg5MDEiLCJyb2xlIjoiQ0FTSElFUiIsImlhdCI6MTc0MzE2ODAwMCwiZXhwIjoxNzQzMTY4OTAwfQ.sig` |
+| `REFRESH_TOKEN` | `a8f5f167f44f4964e6c998dee827110c8a5b3d2e1b7c4f9a0e3d6b9c2f1e4d7a` |
+
+---
+
 ## Índice
 
 - [Login · POST /auth/login](#login--post-authlogin)
@@ -37,22 +48,25 @@
 
 #### Ejemplo de request
 
-**Headers**
-```
-POST /api/v1/auth/login
-Content-Type: application/json
-```
-
-**Body**
-```json
-// pendiente — completar al implementar
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "ana.garcia",
+    "password": "secreto123"
+  }'
 ```
 
 ---
 
 #### Respuesta exitosa · `200 OK`
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJiMmMzZDRlNS1mNmE3LTg5MDEtYmNkZS1mMTIzNDU2Nzg5MDEiLCJyb2xlIjoiQ0FTSElFUiIsImlhdCI6MTc0MzE2ODAwMCwiZXhwIjoxNzQzMTY4OTAwfQ.sig",
+    "refresh_token": "a8f5f167f44f4964e6c998dee827110c8a5b3d2e1b7c4f9a0e3d6b9c2f1e4d7a"
+  }
+}
 ```
 
 ---
@@ -67,17 +81,31 @@ Content-Type: application/json
 
 **400 — Campos faltantes**
 ```json
-// pendiente
+{
+  "message": ["El usuario es requerido", "La contraseña es requerida"],
+  "error": "Bad Request",
+  "statusCode": 400
+}
 ```
 
 **401 — Credenciales incorrectas**
 ```json
-// pendiente
+{
+  "message": "Credenciales incorrectas",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
 ```
+
+> **Nota:** El mismo mensaje se devuelve tanto si el usuario no existe como si la contraseña es incorrecta, para no revelar cuál de los dos falló.
 
 **403 — Cuenta desactivada**
 ```json
-// pendiente
+{
+  "message": "Cuenta desactivada",
+  "error": "Forbidden",
+  "statusCode": 403
+}
 ```
 
 ---
@@ -101,23 +129,27 @@ Content-Type: application/json
 
 #### Ejemplo de request
 
-**Headers**
-```
-POST /api/v1/auth/refresh
-Content-Type: application/json
-```
-
-**Body**
-```json
-// pendiente — completar al implementar
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refresh_token": "a8f5f167f44f4964e6c998dee827110c8a5b3d2e1b7c4f9a0e3d6b9c2f1e4d7a"
+  }'
 ```
 
 ---
 
 #### Respuesta exitosa · `200 OK`
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJiMmMzZDRlNS1mNmE3LTg5MDEtYmNkZS1mMTIzNDU2Nzg5MDEiLCJyb2xlIjoiQ0FTSElFUiIsImlhdCI6MTc0MzE2ODEwMCwiZXhwIjoxNzQzMTY5MDAwfQ.sig",
+    "refresh_token": "b9e6a278055f507df7daa9eff938221d9b6c4e3f2c8d5fab1f4e7cad3a2f5e8b"
+  }
+}
 ```
+
+> **Nota:** Cada llamada a refresh rota los tokens: el refresh token enviado queda revocado y se devuelve uno nuevo. Usar el token antiguo después de rotar devuelve `401 Refresh token revocado`.
 
 ---
 
@@ -127,6 +159,33 @@ Content-Type: application/json
 | ------ | ------------ | --------------------------------- |
 | 401    | Unauthorized | Refresh token inválido o revocado |
 | 401    | Unauthorized | Refresh token expirado            |
+
+**401 — Refresh token inválido**
+```json
+{
+  "message": "Refresh token inválido",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+**401 — Refresh token revocado**
+```json
+{
+  "message": "Refresh token revocado",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+**401 — Refresh token expirado**
+```json
+{
+  "message": "Refresh token expirado",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
 
 ---
 
@@ -149,23 +208,24 @@ Content-Type: application/json
 
 #### Ejemplo de request
 
-**Headers**
-```
-POST /api/v1/auth/logout
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Body**
-```json
-// pendiente — completar al implementar
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/logout \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJiMmMzZDRlNS1mNmE3LTg5MDEtYmNkZS1mMTIzNDU2Nzg5MDEiLCJyb2xlIjoiQ0FTSElFUiIsImlhdCI6MTc0MzE2ODAwMCwiZXhwIjoxNzQzMTY4OTAwfQ.sig" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refresh_token": "a8f5f167f44f4964e6c998dee827110c8a5b3d2e1b7c4f9a0e3d6b9c2f1e4d7a"
+  }'
 ```
 
 ---
 
 #### Respuesta exitosa · `200 OK`
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "message": "Sesión cerrada"
+  }
+}
 ```
 
 ---
@@ -175,6 +235,24 @@ Content-Type: application/json
 | Status | Error        | Causa                    |
 | ------ | ------------ | ------------------------ |
 | 401    | Unauthorized | Token ausente o inválido |
+
+**401 — Token ausente**
+```json
+{
+  "message": "Token ausente",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+**401 — Token inválido o expirado**
+```json
+{
+  "message": "Token inválido o expirado",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
 
 ---
 
@@ -189,17 +267,37 @@ Content-Type: application/json
 
 #### Ejemplo de request
 
-**Headers**
-```
-GET /api/v1/users
-Authorization: Bearer <token>
+```bash
+curl -X GET http://localhost:3000/api/v1/users \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhMWIyYzNkNC1lNWY2LTc4OTAtYWJjZC1lZjEyMzQ1Njc4OTAiLCJyb2xlIjoiT1dORVIiLCJpYXQiOjE3NDMxNjgwMDAsImV4cCI6MTc0MzE2ODkwMH0.sig"
 ```
 
 ---
 
 #### Respuesta exitosa · `200 OK`
 ```json
-// pendiente — completar al implementar
+{
+  "data": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Carlos Mendoza",
+      "username": "carlos.dueno",
+      "role": "OWNER",
+      "isActive": true,
+      "createdAt": "2026-01-15T10:30:00.000Z",
+      "updatedAt": "2026-03-28T08:00:00.000Z"
+    },
+    {
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "name": "Ana García",
+      "username": "ana.garcia",
+      "role": "CASHIER",
+      "isActive": true,
+      "createdAt": "2026-02-10T09:15:00.000Z",
+      "updatedAt": "2026-02-10T09:15:00.000Z"
+    }
+  ]
+}
 ```
 
 ---
@@ -210,6 +308,24 @@ Authorization: Bearer <token>
 | ------ | ------------ | ------------------------ |
 | 401    | Unauthorized | Token ausente o inválido |
 | 403    | Forbidden    | Rol sin permiso          |
+
+**401 — Token ausente o inválido**
+```json
+{
+  "message": "Token ausente",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+**403 — Rol sin permiso**
+```json
+{
+  "message": "No tienes permiso para esta acción",
+  "error": "Forbidden",
+  "statusCode": 403
+}
+```
 
 ---
 
@@ -225,34 +341,44 @@ Authorization: Bearer <token>
 
 #### Request body
 
-| Campo      | Tipo      | Requerido | Validación                  | Descripción             |
-| ---------- | --------- | --------- | --------------------------- | ----------------------- |
-| `name`     | string    | ✅         | min 1, max 100              | Nombre completo         |
-| `username` | string    | ✅         | min 3, max 50, sin espacios | Nombre de usuario único |
-| `password` | string    | ✅         | min 6                       | Contraseña inicial      |
-| `role`     | role_enum | ✅         | `CASHIER`, `WAITER`, `COOK` | Rol del empleado        |
+| Campo      | Tipo      | Requerido | Validación                              | Descripción             |
+| ---------- | --------- | --------- | --------------------------------------- | ----------------------- |
+| `name`     | string    | ✅         | min 1, max 100                          | Nombre completo         |
+| `username` | string    | ✅         | min 3, max 50, solo letras/números/`_`/`-` | Nombre de usuario único |
+| `password` | string    | ✅         | min 6, max 128                          | Contraseña inicial      |
+| `role`     | role_enum | ✅         | `CASHIER`, `WAITER`, `COOK`             | Rol del empleado        |
 
 ---
 
 #### Ejemplo de request
 
-**Headers**
-```
-POST /api/v1/users
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Body**
-```json
-// pendiente — completar al implementar
+```bash
+curl -X POST http://localhost:3000/api/v1/users \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhMWIyYzNkNC1lNWY2LTc4OTAtYWJjZC1lZjEyMzQ1Njc4OTAiLCJyb2xlIjoiT1dORVIiLCJpYXQiOjE3NDMxNjgwMDAsImV4cCI6MTc0MzE2ODkwMH0.sig" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Ana García",
+    "username": "ana.garcia",
+    "password": "clave456",
+    "role": "CASHIER"
+  }'
 ```
 
 ---
 
 #### Respuesta exitosa · `201 Created`
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "name": "Ana García",
+    "username": "ana.garcia",
+    "role": "CASHIER",
+    "isActive": true,
+    "createdAt": "2026-03-28T14:20:00.000Z",
+    "updatedAt": "2026-03-28T14:20:00.000Z"
+  }
+}
 ```
 
 ---
@@ -265,6 +391,42 @@ Content-Type: application/json
 | 401    | Unauthorized | Token ausente o inválido |
 | 403    | Forbidden    | Rol sin permiso          |
 | 409    | Conflict     | Username ya existe       |
+
+**400 — Validación fallida**
+```json
+{
+  "message": ["El nombre es requerido", "El usuario debe tener al menos 3 caracteres"],
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+**401 — Token ausente o inválido**
+```json
+{
+  "message": "Token ausente",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+**403 — Rol sin permiso**
+```json
+{
+  "message": "No tienes permiso para esta acción",
+  "error": "Forbidden",
+  "statusCode": 403
+}
+```
+
+**409 — Username ya existe**
+```json
+{
+  "message": "El username ya está en uso",
+  "error": "Conflict",
+  "statusCode": 409
+}
+```
 
 ---
 
@@ -287,17 +449,26 @@ Content-Type: application/json
 
 #### Ejemplo de request
 
-**Headers**
-```
-GET /api/v1/users/:id
-Authorization: Bearer <token>
+```bash
+curl -X GET http://localhost:3000/api/v1/users/b2c3d4e5-f6a7-8901-bcde-f12345678901 \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJiMmMzZDRlNS1mNmE3LTg5MDEtYmNkZS1mMTIzNDU2Nzg5MDEiLCJyb2xlIjoiQ0FTSElFUiIsImlhdCI6MTc0MzE2ODAwMCwiZXhwIjoxNzQzMTY4OTAwfQ.sig"
 ```
 
 ---
 
 #### Respuesta exitosa · `200 OK`
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "name": "Ana García",
+    "username": "ana.garcia",
+    "role": "CASHIER",
+    "isActive": true,
+    "createdAt": "2026-02-10T09:15:00.000Z",
+    "updatedAt": "2026-02-10T09:15:00.000Z"
+  }
+}
 ```
 
 ---
@@ -310,6 +481,42 @@ Authorization: Bearer <token>
 | 401    | Unauthorized | Token ausente o inválido |
 | 403    | Forbidden    | Acceso a perfil ajeno    |
 | 404    | Not Found    | Usuario no encontrado    |
+
+**400 — UUID mal formado**
+```json
+{
+  "message": "Validation failed (uuid is expected)",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+**401 — Token ausente o inválido**
+```json
+{
+  "message": "Token ausente",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+**403 — Acceso a perfil ajeno**
+```json
+{
+  "message": "No tienes permiso para esta acción",
+  "error": "Forbidden",
+  "statusCode": 403
+}
+```
+
+**404 — Usuario no encontrado**
+```json
+{
+  "message": "Usuario no encontrado",
+  "error": "Not Found",
+  "statusCode": 404
+}
+```
 
 ---
 
@@ -333,35 +540,55 @@ Authorization: Bearer <token>
 
 #### Request body
 
-| Campo       | Tipo      | Requerido | Validación                  | Descripción          |
-| ----------- | --------- | --------- | --------------------------- | -------------------- |
-| `name`      | string    | ❌         | min 1, max 100              | Nombre completo      |
-| `username`  | string    | ❌         | min 3, max 50, sin espacios | Nombre de usuario    |
-| `password`  | string    | ❌         | min 6                       | Nueva contraseña     |
-| `role`      | role_enum | ❌         | `CASHIER`, `WAITER`, `COOK` | Rol del empleado     |
-| `is_active` | boolean   | ❌         |                             | Activar o desactivar |
+| Campo       | Tipo      | Requerido | Validación                              | Descripción          |
+| ----------- | --------- | --------- | --------------------------------------- | -------------------- |
+| `name`      | string    | ❌         | min 1, max 100                          | Nombre completo      |
+| `username`  | string    | ❌         | min 3, max 50, solo letras/números/`_`/`-` | Nombre de usuario    |
+| `password`  | string    | ❌         | min 6, max 128                          | Nueva contraseña     |
+| `role`      | role_enum | ❌         | `CASHIER`, `WAITER`, `COOK`             | Rol del empleado     |
+| `is_active` | boolean   | ❌         |                                         | Activar o desactivar |
 
 ---
 
-#### Ejemplo de request
+#### Ejemplo de request — OWNER edita empleado
 
-**Headers**
-```
-PATCH /api/v1/users/:id
-Authorization: Bearer <token>
-Content-Type: application/json
+```bash
+curl -X PATCH http://localhost:3000/api/v1/users/b2c3d4e5-f6a7-8901-bcde-f12345678901 \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhMWIyYzNkNC1lNWY2LTc4OTAtYWJjZC1lZjEyMzQ1Njc4OTAiLCJyb2xlIjoiT1dORVIiLCJpYXQiOjE3NDMxNjgwMDAsImV4cCI6MTc0MzE2ODkwMH0.sig" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Ana García López",
+    "role": "CASHIER",
+    "is_active": true
+  }'
 ```
 
-**Body**
-```json
-// pendiente — completar al implementar
+#### Ejemplo de request — empleado cambia su propia contraseña
+
+```bash
+curl -X PATCH http://localhost:3000/api/v1/users/b2c3d4e5-f6a7-8901-bcde-f12345678901 \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJiMmMzZDRlNS1mNmE3LTg5MDEtYmNkZS1mMTIzNDU2Nzg5MDEiLCJyb2xlIjoiQ0FTSElFUiIsImlhdCI6MTc0MzE2ODAwMCwiZXhwIjoxNzQzMTY4OTAwfQ.sig" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "password": "nuevaclave789"
+  }'
 ```
 
 ---
 
 #### Respuesta exitosa · `200 OK`
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "name": "Ana García López",
+    "username": "ana.garcia",
+    "role": "CASHIER",
+    "isActive": true,
+    "createdAt": "2026-02-10T09:15:00.000Z",
+    "updatedAt": "2026-03-28T15:45:00.000Z"
+  }
+}
 ```
 
 ---
@@ -375,6 +602,69 @@ Content-Type: application/json
 | 403    | Forbidden    | Rol sin permiso               |
 | 404    | Not Found    | Usuario no encontrado         |
 | 409    | Conflict     | Username ya existe            |
+
+**400 — UUID mal formado**
+```json
+{
+  "message": "Validation failed (uuid is expected)",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+**400 — Validación fallida**
+```json
+{
+  "message": ["La contraseña debe tener al menos 6 caracteres"],
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+**401 — Token ausente o inválido**
+```json
+{
+  "message": "Token ausente",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+**403 — Empleado intenta editar campos restringidos**
+```json
+{
+  "message": "Solo puedes cambiar tu contraseña",
+  "error": "Forbidden",
+  "statusCode": 403
+}
+```
+
+**403 — Empleado intenta editar perfil ajeno**
+```json
+{
+  "message": "No tienes permiso para esta acción",
+  "error": "Forbidden",
+  "statusCode": 403
+}
+```
+
+**404 — Usuario no encontrado**
+```json
+{
+  "message": "Usuario no encontrado",
+  "error": "Not Found",
+  "statusCode": 404
+}
+```
+
+**409 — Username ya existe**
+```json
+{
+  "message": "El username ya está en uso",
+  "error": "Conflict",
+  "statusCode": 409
+}
+```
 
 ---
 
@@ -398,18 +688,29 @@ Content-Type: application/json
 
 #### Ejemplo de request
 
-**Headers**
-```
-DELETE /api/v1/users/:id
-Authorization: Bearer <token>
+```bash
+curl -X DELETE http://localhost:3000/api/v1/users/b2c3d4e5-f6a7-8901-bcde-f12345678901 \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhMWIyYzNkNC1lNWY2LTc4OTAtYWJjZC1lZjEyMzQ1Njc4OTAiLCJyb2xlIjoiT1dORVIiLCJpYXQiOjE3NDMxNjgwMDAsImV4cCI6MTc0MzE2ODkwMH0.sig"
 ```
 
 ---
 
 #### Respuesta exitosa · `200 OK`
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "name": "Ana García",
+    "username": "ana.garcia",
+    "role": "CASHIER",
+    "isActive": false,
+    "createdAt": "2026-02-10T09:15:00.000Z",
+    "updatedAt": "2026-03-28T16:00:00.000Z"
+  }
+}
 ```
+
+> **Nota:** Es un soft delete. El registro permanece en la base de datos con `isActive: false`. El empleado desactivado no puede hacer login pero su historial queda intacto.
 
 ---
 
@@ -422,3 +723,48 @@ Authorization: Bearer <token>
 | 403    | Forbidden            | Rol sin permiso                       |
 | 404    | Not Found            | Usuario no encontrado                 |
 | 422    | Unprocessable Entity | No se puede desactivar al único OWNER |
+
+**400 — UUID mal formado**
+```json
+{
+  "message": "Validation failed (uuid is expected)",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+**401 — Token ausente o inválido**
+```json
+{
+  "message": "Token ausente",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+**403 — Rol sin permiso**
+```json
+{
+  "message": "No tienes permiso para esta acción",
+  "error": "Forbidden",
+  "statusCode": 403
+}
+```
+
+**404 — Usuario no encontrado**
+```json
+{
+  "message": "Usuario no encontrado",
+  "error": "Not Found",
+  "statusCode": 404
+}
+```
+
+**422 — Único OWNER activo**
+```json
+{
+  "message": "No se puede desactivar al único OWNER activo",
+  "error": "Unprocessable Entity",
+  "statusCode": 422
+}
+```
