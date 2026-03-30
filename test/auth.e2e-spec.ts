@@ -5,7 +5,7 @@ import { ZodValidationPipe } from "nestjs-zod";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AppModule } from "@/app.module";
-import { TransformInterceptor } from "@/common/transform.interceptor";
+import { TransformInterceptor } from "@/common/interceptors/transform.interceptor";
 import { PrismaService } from "@/prisma/prisma.service";
 
 describe("Auth E2E", () => {
