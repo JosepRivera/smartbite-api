@@ -31,7 +31,10 @@ export class UsersController {
 
 	@Get()
 	@Roles("OWNER")
-	@ApiOperation({ summary: "Listar empleados", description: "Devuelve todos los usuarios del sistema incluyendo desactivados. Solo OWNER." })
+	@ApiOperation({
+		summary: "Listar empleados",
+		description: "Devuelve todos los usuarios del sistema incluyendo desactivados. Solo OWNER.",
+	})
 	@ApiResponse({ status: 200, description: "Lista de usuarios devuelta correctamente." })
 	@ApiResponse({ status: 401, description: "Token ausente o inválido." })
 	@ApiResponse({ status: 403, description: "Rol sin permiso (requiere OWNER)." })
@@ -41,7 +44,10 @@ export class UsersController {
 
 	@Post()
 	@Roles("OWNER")
-	@ApiOperation({ summary: "Crear empleado", description: "Crea una cuenta de empleado. No existe registro público. Solo OWNER." })
+	@ApiOperation({
+		summary: "Crear empleado",
+		description: "Crea una cuenta de empleado. No existe registro público. Solo OWNER.",
+	})
 	@ApiResponse({ status: 201, description: "Empleado creado correctamente." })
 	@ApiResponse({ status: 400, description: "Validación fallida." })
 	@ApiResponse({ status: 401, description: "Token ausente o inválido." })
@@ -52,7 +58,10 @@ export class UsersController {
 	}
 
 	@Get(":id")
-	@ApiOperation({ summary: "Obtener empleado por ID", description: "OWNER puede ver cualquier perfil. Otros roles solo pueden ver el suyo propio." })
+	@ApiOperation({
+		summary: "Obtener empleado por ID",
+		description: "OWNER puede ver cualquier perfil. Otros roles solo pueden ver el suyo propio.",
+	})
 	@ApiParam({ name: "id", description: "UUID del usuario", format: "uuid" })
 	@ApiResponse({ status: 200, description: "Usuario encontrado." })
 	@ApiResponse({ status: 400, description: "UUID mal formado." })
@@ -68,7 +77,11 @@ export class UsersController {
 
 	@Patch(":id")
 	@HttpCode(200)
-	@ApiOperation({ summary: "Editar empleado", description: "OWNER puede editar todos los campos. Otros roles solo pueden cambiar su propia contraseña." })
+	@ApiOperation({
+		summary: "Editar empleado",
+		description:
+			"OWNER puede editar todos los campos. Otros roles solo pueden cambiar su propia contraseña.",
+	})
 	@ApiParam({ name: "id", description: "UUID del usuario", format: "uuid" })
 	@ApiResponse({ status: 200, description: "Usuario actualizado correctamente." })
 	@ApiResponse({ status: 400, description: "UUID mal formado o validación fallida." })
@@ -86,7 +99,10 @@ export class UsersController {
 
 	@Delete(":id")
 	@Roles("OWNER")
-	@ApiOperation({ summary: "Desactivar empleado", description: "Soft delete: marca isActive = false. El historial se conserva. Solo OWNER." })
+	@ApiOperation({
+		summary: "Desactivar empleado",
+		description: "Soft delete: marca isActive = false. El historial se conserva. Solo OWNER.",
+	})
 	@ApiParam({ name: "id", description: "UUID del usuario", format: "uuid" })
 	@ApiResponse({ status: 200, description: "Empleado desactivado correctamente." })
 	@ApiResponse({ status: 400, description: "UUID mal formado." })

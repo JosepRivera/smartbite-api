@@ -4,12 +4,19 @@ import { z } from "zod";
 const ASSIGNABLE_ROLES = ["CASHIER", "WAITER", "COOK"] as const;
 
 export const UpdateUserSchema = z.object({
-	name: z.string().min(1, "El nombre es requerido").max(100, "El nombre no puede exceder 100 caracteres").optional(),
+	name: z
+		.string()
+		.min(1, "El nombre es requerido")
+		.max(100, "El nombre no puede exceder 100 caracteres")
+		.optional(),
 	username: z
 		.string()
 		.min(3, "El usuario debe tener al menos 3 caracteres")
 		.max(50, "El usuario no puede exceder 50 caracteres")
-		.regex(/^[a-zA-Z0-9_-]+$/, "El usuario solo puede contener letras, números, guiones y guiones bajos")
+		.regex(
+			/^[a-zA-Z0-9_-]+$/,
+			"El usuario solo puede contener letras, números, guiones y guiones bajos",
+		)
 		.optional(),
 	password: z
 		.string()
