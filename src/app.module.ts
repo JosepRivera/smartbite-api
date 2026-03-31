@@ -5,6 +5,7 @@ import { AuthModule } from "./auth/auth.module";
 import { IngredientsModule } from "./ingredients/ingredients.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { ProductsModule } from "./products/products.module";
+import { RecipesModule } from "./recipes/recipes.module";
 import { UsersModule } from "./users/users.module";
 
 @Module({
@@ -18,6 +19,7 @@ import { UsersModule } from "./users/users.module";
 		UsersModule,
 		ProductsModule,
 		IngredientsModule,
+		RecipesModule,
 	],
 })
 export class AppModule {}
