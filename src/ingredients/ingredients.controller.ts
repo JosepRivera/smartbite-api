@@ -16,7 +16,8 @@ import { RolesGuard } from "@/common/guards/roles.guard";
 import { Role } from "@/prisma/prisma.service";
 import type { CreateIngredientDto } from "./dto/create-ingredient.dto";
 import type { UpdateIngredientDto } from "./dto/update-ingredient.dto";
-import type { IngredientsService } from "./ingredients.service";
+// biome-ignore lint/style/useImportType: required for NestJS DI
+import { IngredientsService } from "./ingredients.service";
 
 @ApiTags("ingredients")
 @ApiBearerAuth("access-token")

@@ -4,9 +4,8 @@ import {
 	NotFoundException,
 	UnprocessableEntityException,
 } from "@nestjs/common";
-import type { PrismaProduct, SaleStatus } from "@/prisma/prisma.service";
 // biome-ignore lint/style/useImportType: required for NestJS DI
-import { PrismaService } from "@/prisma/prisma.service";
+import { PrismaProduct, PrismaService, SaleStatus } from "@/prisma/prisma.service";
 import type { CreateProduct } from "./dto/create-product.dto";
 import type { UpdateProduct } from "./dto/update-product.dto";
 

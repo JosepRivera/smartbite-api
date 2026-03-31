@@ -4,7 +4,8 @@ import {
 	Injectable,
 	NotFoundException,
 } from "@nestjs/common";
-import type { PrismaIngredient, PrismaService } from "@/prisma/prisma.service";
+// biome-ignore lint/style/useImportType: required for NestJS DI
+import { PrismaIngredient, PrismaService } from "@/prisma/prisma.service";
 import type { CreateIngredient } from "./dto/create-ingredient.dto";
 import type { UpdateIngredient } from "./dto/update-ingredient.dto";
 
