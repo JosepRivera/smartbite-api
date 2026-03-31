@@ -17,12 +17,12 @@ export type {
 	Recipe as PrismaRecipe,
 	ReferenceBaseline as PrismaReferenceBaseline,
 	RefreshToken as PrismaRefreshToken,
-	Role,
 	Sale as PrismaSale,
 	SaleItem as PrismaSaleItem,
-	SaleStatus,
 	User as PrismaUser,
 } from "../generated/prisma/client";
+// Enums exportados como valores (necesarios en runtime para guards y decoradores)
+export { Role, SaleStatus } from "../generated/prisma/client";
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
