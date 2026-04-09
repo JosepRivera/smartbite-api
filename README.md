@@ -10,10 +10,14 @@
 [![Docker](https://img.shields.io/badge/Docker-v29-2496ED?style=for-the-badge&logo=docker&logoColor=white&labelColor=2496ED&color=2d2d2d)](https://www.docker.com/)
 [![pnpm](https://img.shields.io/badge/pnpm-v10-F69220?style=for-the-badge&logo=pnpm&logoColor=white&labelColor=F69220&color=2d2d2d)](https://pnpm.io/)
 [![Biome](https://img.shields.io/badge/Biome-v2-60A5FA?style=for-the-badge&logo=biome&logoColor=white&labelColor=60A5FA&color=2d2d2d)](https://biomejs.dev/)
-[![Vitest](https://img.shields.io/badge/Vitest-v4-6E9F18?style=for-the-badge&logo=vitest&logoColor=white&labelColor=6E9F18&color=2d2d2d)](https://vitest.dev/)
+[![Vitest](https://img.shields.io/badge/Vitest-v4-2d2d2d?style=for-the-badge&logo=vitest&logoColor=6E9F18&labelColor=000000&color=2d2d2d)](https://vitest.dev/)
 [![JWT](https://img.shields.io/badge/JWT-Auth-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white&labelColor=000000&color=2d2d2d)](https://jwt.io/)
+[![Zod](https://img.shields.io/badge/Zod-v4-3E67B1?style=for-the-badge&logo=zod&logoColor=white&labelColor=3E67B1&color=2d2d2d)](https://zod.dev/)
+[![Kotlin](https://img.shields.io/badge/Kotlin-v2-000000?style=for-the-badge&logo=kotlin&logoColor=7F52FF&labelColor=000000&color=2d2d2d)](https://kotlinlang.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Platform-1a2e2a?style=for-the-badge&logo=supabase&logoColor=3ECF8E&labelColor=11181C&color=2d2d2d)](https://supabase.com/)
+[![Render](https://img.shields.io/badge/Render-Platform-FFFFFF?style=for-the-badge&logo=render&logoColor=black&labelColor=FFFFFF&color=2d2d2d)](https://render.com/)
 [![Anthropic](https://img.shields.io/badge/Claude-V4.5-CC785C?style=for-the-badge&logo=anthropic&logoColor=white&labelColor=CC785C&color=2d2d2d)](https://www.anthropic.com/)
-[![Groq](https://img.shields.io/badge/Groq-Whisper-F55036?style=for-the-badge&logo=lightning&logoColor=white&labelColor=F55036&color=2d2d2d)](https://groq.com/)
+[![Groq](https://img.shields.io/badge/Groq-V3-F55036?style=for-the-badge&logo=lightning&logoColor=white&labelColor=F55036&color=2d2d2d)](https://groq.com/)
 
 **Backend del sistema de gestión inteligente para restaurantes.**  
 Gestión de ventas, stock, recetas, reportes financieros, predicción de demanda
@@ -150,7 +154,7 @@ smartbite-api/
 
 El schema tiene 12 tablas y 3 enums. Los totales del cierre de caja se
 persisten de forma intencional para garantizar la inmutabilidad del
-registro histórico. Ver [`docs/decisions/0005-cash-close-immutability.md`](./docs/decisions/0005-cash-close-immutability.md).
+registro histórico.
 
 ![Diagrama ER](docs/assets/er-diagram.svg)
 
@@ -159,8 +163,8 @@ Decisiones de diseño destacadas:
 - **El stock se descuenta solo al confirmar el cobro**, nunca al crear la orden.
 - **Los cierres de caja son inmutables** a nivel de API y de permisos en la BD.
 - **Los refresh tokens se guardan como hash** bcrypt, nunca en texto plano.
-- **La app Kotlin usa API Key**, no JWT. Ver [`docs/decisions/0004-api-key-auth-for-kotlin.md`](./docs/decisions/0004-api-key-auth-for-kotlin.md).
-- **El plan de producción es precalculado** por un cron job a las 6 am. Ver [`docs/decisions/0008-precalculated-production-plan.md`](./docs/decisions/0008-precalculated-production-plan.md).
+- **La app Kotlin usa API Key**, no JWT.
+- **El plan de producción es precalculado** por un cron job a las 6 am.
 
 > Schema completo con columnas, índices y constraints: [`docs/database-schema.md`](./docs/database-schema.md)
 

@@ -380,7 +380,6 @@ postgres:
 | Agregar un índice        | Editar `prisma/sql/03_indexes.sql` → `pnpm clean` → `pnpm dev:build`     |
 | Reset normal de BD       | `pnpm db:reset` — Prisma resetea, Docker ya ejecutó los scripts al crear |
 
-Ver `decisions/0010-docker-sql-init.md`.
 
 ---
 
@@ -394,5 +393,3 @@ Resumen de la justificación técnica:
 - **`TIMESTAMPTZ`:** zona horaria correcta sin configuración adicional.
 - **`gen_random_uuid()`:** PKs UUID sin dependencias externas.
 - **Estándar en Railway:** plataforma de despliegue elegida para la demo.
-
-Ver `decisions/0009-postgresql-over-alternatives.md`.

@@ -422,19 +422,3 @@ Todos los clientes leen esta tabla; ningún cliente ejecuta IA en tiempo real.
 | products     | reference_baselines    | 1 a N | CASCADE   | Un producto tiene referencias por día           |
 | products     | daily_production_plans | 1 a N | CASCADE   | Un producto aparece en varios planes diarios    |
 | users        | payment_notifications  | 1 a N | SET NULL  | Un cajero puede revisar muchas notificaciones   |
-
----
-
-## Resumen de cambios respecto a la versión anterior
-
-> Esta sección puede eliminarse una vez que el schema esté en Prisma.
-
-| Tabla                    | Cambio                                                                          | Motivo                                         |
-| ------------------------ | ------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `ingredients`            | Añadido `cost_per_unit DECIMAL NOT NULL CHECK (> 0)`                            | REP-3 y `v_product_profitability` lo requieren |
-| `sales`                  | `table_number` cambiado de `INT` a `VARCHAR(10)`                                | Permite identificadores alfanuméricos          |
-| `sales`                  | Añadidas notas de desnormalización de `total` y tabla de transiciones de estado | Evitar ambigüedad en implementación            |
-| `cash_closes`            | UNIQUE constraint cambiado a índice parcial (`WHERE parent_close_id IS NULL`)   | Permite múltiples ajustes del mismo día        |
-| `payment_notifications`  | Añadidos `raw_text`, `reviewed_by`, `reviewed_at`                               | Trazabilidad y soporte al endpoint de review   |
-| `device_tokens`          | Añadido `revoked_at TIMESTAMPTZ NULL`                                           | Auditoría de cuándo se revocó el dispositivo   |
-| `daily_production_plans` | Añadido `prediction_source VARCHAR(50) NOT NULL`                                | Flutter necesita saber la calidad del plan     |
