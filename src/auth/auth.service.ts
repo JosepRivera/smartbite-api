@@ -146,76 +146,50 @@ export class AuthService {
 	}
 
 	/**
-	 * Genera la URL de OAuth para Google.
-	 * El cliente (web/mobile) abre esta URL en un browser o webview.
-	 * Supabase redirige a /auth/callback después de la autenticación.
+	 * Registra o verifica el perfil OWNER después del Google OAuth nativo del SDK Kotlin.
+	 * El cliente ya tiene tokens de Supabase — el JwtGuard validó el JWT antes de llegar acá.
 	 *
-	 * Prerequisito: configurar el provider de Google en el dashboard de Supabase.
+	 * Primera vez: crea el perfil OWNER en nuestra BD.
+	 * Siguientes veces: devuelve el perfil existente.
+	 * Si ya hay un OWNER con distinto ID: 401.
 	 */
-	async getGoogleOAuthUrl(redirectTo: string) {
-		const { data, error } = await this.supabase.admin.auth.signInWithOAuth({
-			provider: "google",
-			options: {
-				redirectTo,
-				queryParams: {
-					access_type: "offline",
-					prompt: "consent",
-				},
-			},
-		});
-
-		if (error || !data.url) {
-			throw new InternalServerErrorException("Error generando URL de OAuth");
-		}
-
-		return { url: data.url };
-	}
-
-	/**
-	 * Intercambia el código de OAuth (PKCE) por una sesión.
-	 * El cliente envía el `code` que Supabase incluyó en el callback URL.
-	 *
-	 * Restricción: solo la cuenta Google del primer OWNER registrado puede acceder.
-	 * Cualquier otra cuenta Google recibe 401.
-	 */
-	async exchangeOAuthCode(code: string) {
-		const { data, error } = await this.supabase.admin.auth.exchangeCodeForSession(code);
-
-		if (error || !data.session) {
-			throw new UnauthorizedException("Código OAuth inválido o expirado");
-		}
-
+	async registerOwnerSession(userId: string) {
 		// Verificar que no haya otro OWNER registrado con distinto ID
 		const existingOwner = await this.prisma.user.findFirst({
 			where: { role: "OWNER" },
 		});
 
-		if (existingOwner && existingOwner.id !== data.user.id) {
-			// Invalidar la sesión recién creada antes de rechazar
-			await this.supabase.admin.auth.admin.signOut(data.user.id);
+		if (existingOwner && existingOwner.id !== userId) {
 			throw new UnauthorizedException("Solo el dueño registrado puede acceder con Google.");
 		}
 
-		// Primera vez — crear perfil OWNER en nuestra BD
-		const existing = await this.prisma.user.findUnique({
-			where: { id: data.user.id },
-		});
+		// Buscar o crear el perfil OWNER
+		let user = await this.prisma.user.findUnique({ where: { id: userId } });
 
-		if (!existing) {
-			await this.prisma.user.create({
+		if (!user) {
+			// Primera vez — obtener datos del usuario desde Supabase Auth
+			const { data, error } = await this.supabase.admin.auth.admin.getUserById(userId);
+
+			if (error || !data.user) {
+				throw new UnauthorizedException("No se pudo obtener el perfil de Supabase Auth.");
+			}
+
+			user = await this.prisma.user.create({
 				data: {
-					id: data.user.id,
-					name: data.user.user_metadata?.full_name ?? data.user.email ?? "Usuario Google",
-					username: data.user.email?.split("@")[0] ?? data.user.id.slice(0, 8),
+					id: userId,
+					name: data.user.user_metadata?.full_name ?? data.user.email ?? "Dueño",
+					username: data.user.email?.split("@")[0] ?? userId.slice(0, 8),
 					role: "OWNER",
 				},
 			});
 		}
 
 		return {
-			access_token: data.session.access_token,
-			refresh_token: data.session.refresh_token,
-			expires_in: data.session.expires_in,
+			id: user.id,
+			name: user.name,
+			username: user.username,
+			role: user.role,
+			isActive: user.isActive,
 		};
 	}
 

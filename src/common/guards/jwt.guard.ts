@@ -7,9 +7,7 @@ import {
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { env } from "@/config/env";
 
-const JWKS = createRemoteJWKSet(
-	new URL(`${env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`),
-);
+const JWKS = createRemoteJWKSet(new URL(`${env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`));
 
 @Injectable()
 export class JwtGuard implements CanActivate {

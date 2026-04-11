@@ -132,9 +132,9 @@ describe("UsersService", () => {
 		it("no-OWNER intenta cambiar perfil ajeno → 403", async () => {
 			mockPrisma.user.findUnique.mockResolvedValue({ id: "otro-id" });
 
-			await expect(service.update("otro-id", { password: "nueva123" }, cashierUser)).rejects.toThrow(
-				ForbiddenException,
-			);
+			await expect(
+				service.update("otro-id", { password: "nueva123" }, cashierUser),
+			).rejects.toThrow(ForbiddenException);
 		});
 
 		it("no-OWNER intenta cambiar campos restringidos → 403", async () => {

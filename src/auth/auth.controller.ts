@@ -1,9 +1,9 @@
-import { Body, Controller, Get, HttpCode, Patch, Post, Query, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { Roles } from "@/common/decorators/roles.decorator";
-import { RolesGuard } from "@/common/guards/roles.guard";
+import { Body, Controller, HttpCode, Patch, Post, UseGuards } from "@nestjs/common";
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "@/common/decorators/current-user.decorator";
+import { Roles } from "@/common/decorators/roles.decorator";
 import { JwtGuard } from "@/common/guards/jwt.guard";
+import { RolesGuard } from "@/common/guards/roles.guard";
 // biome-ignore lint/style/useImportType: required for NestJS DI
 import { AuthService } from "./auth.service";
 import type { ForgotPasswordDtoClass } from "./dto/forgot-password.dto";
@@ -89,38 +89,22 @@ export class AuthController {
 		return this.authService.resetPassword(user.sub, dto);
 	}
 
-	@Get("google")
+	@Post("owner-session")
+	@HttpCode(200)
+	@UseGuards(JwtGuard)
+	@ApiBearerAuth("access-token")
 	@ApiOperation({
-		summary: "Obtener URL de login con Google",
+		summary: "Registrar o verificar sesión del dueño (Google OAuth)",
 		description:
-			"Retorna la URL de OAuth de Google generada por Supabase. " +
-			"El cliente abre esa URL en un browser o webview. " +
-			"Prerequisito: Google OAuth configurado en el dashboard de Supabase.",
+			"El cliente Kotlin llama este endpoint después de autenticarse con Google via el SDK de Supabase. " +
+			"Primera vez: crea el perfil OWNER en la BD. " +
+			"Siguientes veces: devuelve el perfil existente. " +
+			"Si ya hay un OWNER con distinto ID, retorna 401.",
 	})
-	@ApiQuery({
-		name: "redirect_to",
-		required: false,
-		description:
-			"URL a la que Supabase redirige después del OAuth (debe ser un dominio permitido en Supabase)",
-	})
-	@ApiResponse({ status: 200, description: "URL de OAuth generada correctamente." })
-	getGoogleUrl(@Query("redirect_to") redirectTo?: string) {
-		const callbackUrl = redirectTo ?? `${process.env.SUPABASE_URL}/auth/v1/callback`;
-		return this.authService.getGoogleOAuthUrl(callbackUrl);
-	}
-
-	@Get("callback")
-	@ApiOperation({
-		summary: "Callback de OAuth (Google)",
-		description:
-			"Supabase redirige acá después del login con Google con un `code` en la query. " +
-			"Intercambia el code por tokens de sesión.",
-	})
-	@ApiQuery({ name: "code", required: true, description: "Código OAuth recibido de Supabase" })
-	@ApiResponse({ status: 200, description: "Autenticación con Google exitosa. Retorna tokens." })
-	@ApiResponse({ status: 401, description: "Código OAuth inválido o expirado." })
-	callback(@Query("code") code: string) {
-		return this.authService.exchangeOAuthCode(code);
+	@ApiResponse({ status: 200, description: "Perfil OWNER registrado o verificado correctamente." })
+	@ApiResponse({ status: 401, description: "Token inválido o la cuenta Google no es la del dueño registrado." })
+	ownerSession(@CurrentUser() user: { sub: string }) {
+		return this.authService.registerOwnerSession(user.sub);
 	}
 
 	@Patch("owner-email")
@@ -139,10 +123,7 @@ export class AuthController {
 	@ApiResponse({ status: 401, description: "Token ausente o inválido." })
 	@ApiResponse({ status: 403, description: "Rol sin permiso (requiere OWNER)." })
 	@ApiResponse({ status: 500, description: "Error al actualizar en Supabase." })
-	updateOwnerEmail(
-		@CurrentUser() user: { sub: string },
-		@Body() dto: UpdateOwnerEmailDtoClass,
-	) {
+	updateOwnerEmail(@CurrentUser() user: { sub: string }, @Body() dto: UpdateOwnerEmailDtoClass) {
 		return this.authService.updateOwnerEmail(user.sub, dto);
 	}
 }

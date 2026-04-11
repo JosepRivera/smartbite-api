@@ -55,7 +55,9 @@ export class UsersService {
 		});
 
 		if (error || !data.user) {
-			throw new InternalServerErrorException(`Error creando usuario en Supabase: ${error?.message}`);
+			throw new InternalServerErrorException(
+				`Error creando usuario en Supabase: ${error?.message}`,
+			);
 		}
 
 		// Crear perfil en nuestra BD con el mismo UUID que Supabase asignó
@@ -97,7 +99,8 @@ export class UsersService {
 			const { error } = await this.supabase.admin.auth.admin.updateUserById(id, {
 				password: dto.password,
 			});
-			if (error) throw new InternalServerErrorException(`Error actualizando contraseña: ${error.message}`);
+			if (error)
+				throw new InternalServerErrorException(`Error actualizando contraseña: ${error.message}`);
 
 			return this.prisma.user.findUnique({ where: { id } });
 		}
@@ -138,7 +141,8 @@ export class UsersService {
 			const { error } = await this.supabase.admin.auth.admin.updateUserById(id, {
 				password: dto.password,
 			});
-			if (error) throw new InternalServerErrorException(`Error actualizando contraseña: ${error.message}`);
+			if (error)
+				throw new InternalServerErrorException(`Error actualizando contraseña: ${error.message}`);
 		}
 
 		return this.prisma.user.update({ where: { id }, data: prismaData });
