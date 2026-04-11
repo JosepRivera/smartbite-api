@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Nota: id NO tiene DEFAULT — viene de auth.users via Supabase Auth.
 
 CREATE INDEX IF NOT EXISTS idx_users_role ON users (role);
 
@@ -307,18 +308,13 @@ GROUP BY p.id, p.name, p.category, p.price;
 
 -- ─────────────────────────────────────────────
 -- INMUTABILIDAD DE CASH_CLOSES
--- El rol postgres no puede hacer UPDATE ni DELETE en cash_closes.
+-- Revocamos UPDATE y DELETE a los roles de Supabase.
+-- service_role (NestJS via admin client) conserva todos los permisos.
 -- Capa 2 de seguridad (Capa 1: la API solo expone POST).
 -- ─────────────────────────────────────────────
 
-DO $$
-BEGIN
-  EXECUTE format(
-    'REVOKE UPDATE, DELETE ON cash_closes FROM %I',
-    current_user
-  );
-END
-$$;
+REVOKE UPDATE, DELETE ON cash_closes FROM authenticated;
+REVOKE UPDATE, DELETE ON cash_closes FROM anon;
 
 
 -- ─────────────────────────────────────────────
