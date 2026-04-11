@@ -6,6 +6,7 @@ import { IngredientsModule } from "./ingredients/ingredients.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { ProductsModule } from "./products/products.module";
 import { RecipesModule } from "./recipes/recipes.module";
+import { SupabaseModule } from "./supabase/supabase.module";
 import { UsersModule } from "./users/users.module";
 
 @Module({
@@ -15,6 +16,7 @@ import { UsersModule } from "./users/users.module";
 			validate,
 		}),
 		PrismaModule,
+		SupabaseModule,
 		AuthModule,
 		UsersModule,
 		ProductsModule,

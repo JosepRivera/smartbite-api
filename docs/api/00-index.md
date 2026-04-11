@@ -1,22 +1,34 @@
 # Índice de la API · docs/api/00-index.md
 
 > Referencia completa de todos los endpoints de SmartBite.
-> Ver `docs/api-conventions.md` para las reglas generales que aplican a todos.
+> Ver el Swagger en `http://localhost:3000/api/docs` para explorar los endpoints interactivamente.
 
 ---
 
 ## Autenticación · `docs/api/01-auth.md`
 
-| Método | Endpoint      | Descripción          | Roles   |
-| ------ | ------------- | -------------------- | ------- |
-| POST   | /auth/login   | Iniciar sesión       | Público |
-| POST   | /auth/refresh | Renovar access token | Público |
-| POST   | /auth/logout  | Cerrar sesión        | Todos   |
-| GET    | /users        | Listar empleados     | OWNER   |
-| POST   | /users        | Crear empleado       | OWNER   |
-| GET    | /users/:id    | Obtener perfil       | Todos   |
-| PATCH  | /users/:id    | Editar empleado      | OWNER   |
-| DELETE | /users/:id    | Desactivar empleado  | OWNER   |
+| Método | Endpoint              | Descripción                              | Roles   |
+| ------ | --------------------- | ---------------------------------------- | ------- |
+| POST   | /auth/login           | Iniciar sesión con usuario y contraseña  | Público |
+| POST   | /auth/logout          | Cerrar todas las sesiones activas        | Todos   |
+| POST   | /auth/refresh         | Renovar access token                     | Público |
+| POST   | /auth/forgot-password | Solicitar recuperación de contraseña     | Público |
+| POST   | /auth/reset-password  | Cambiar contraseña con token de recovery | JWT     |
+| GET    | /auth/google          | Obtener URL de OAuth de Google           | Público |
+| GET    | /auth/callback        | Callback OAuth — intercambiar code       | Público |
+| PATCH  | /auth/owner-email     | Actualizar Gmail del dueño               | OWNER   |
+
+---
+
+## Empleados y roles · `docs/api/02-users.md`
+
+| Método | Endpoint   | Descripción                                  | Roles               |
+| ------ | ---------- | -------------------------------------------- | ------------------- |
+| GET    | /users     | Listar empleados                             | OWNER               |
+| POST   | /users     | Crear empleado                               | OWNER               |
+| GET    | /users/:id | Obtener perfil (propio o ajeno si es OWNER)  | Todos               |
+| PATCH  | /users/:id | Editar empleado (OWNER) o cambiar contraseña | Todos (con límites) |
+| DELETE | /users/:id | Desactivar empleado (soft delete)            | OWNER               |
 
 ---
 
@@ -41,7 +53,7 @@
 | GET    | /sales/:id/receipt  | Ticket de la orden        | OWNER, CASHIER, WAITER |
 | PATCH  | /sales/:id/status   | Cobrar o cancelar         | OWNER, CASHIER, WAITER |
 | POST   | /sales/bulk-pay     | Cobro múltiple            | OWNER, CASHIER         |
-| PATCH  | /sales/:id          | Corregir venta            | OWNER                  |
+| PATCH  | /sales/:id          | Corregir venta (OPS-6)    | OWNER                  |
 | GET    | /expenses           | Listar gastos             | OWNER                  |
 | POST   | /expenses           | Registrar gasto           | OWNER                  |
 

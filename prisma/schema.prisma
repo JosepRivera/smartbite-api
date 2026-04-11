@@ -46,16 +46,14 @@ enum PaymentSource {
 // ─────────────────────────────────────────────
 
 model User {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id        String   @id @db.Uuid
   name      String
   username  String   @unique
-  password  String
   role      Role
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  refreshTokens        RefreshToken[]
   sales                Sale[]                @relation("SaleCreatedBy")
   salesUpdated         Sale[]                @relation("SaleUpdatedBy")
   salesCancelled       Sale[]                @relation("SaleCancelledBy")
@@ -66,20 +64,6 @@ model User {
 
   @@index([role], map: "idx_users_role")
   @@map("users")
-}
-
-model RefreshToken {
-  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
-  tokenHash String    @unique @map("token_hash") @db.VarChar(255)
-  expiresAt DateTime  @map("expires_at") @db.Timestamptz
-  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId], map: "idx_refresh_tokens_user_id")
-  @@map("refresh_tokens")
 }
 
 model Product {

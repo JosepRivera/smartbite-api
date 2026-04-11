@@ -16,7 +16,6 @@ export type {
 	ProductProfitability as PrismaProductProfitability,
 	Recipe as PrismaRecipe,
 	ReferenceBaseline as PrismaReferenceBaseline,
-	RefreshToken as PrismaRefreshToken,
 	Sale as PrismaSale,
 	SaleItem as PrismaSaleItem,
 	User as PrismaUser,

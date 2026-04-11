@@ -196,7 +196,7 @@ Authorization: Bearer <token>
 ### Registrar dispositivo · POST /devices/register
 
 > Registra la app Kotlin como dispositivo autorizado. El dueño llama a este
-> endpoint desde Flutter, obtiene la API Key y la transfiere a la app Kotlin
+> endpoint desde kotlin, obtiene la API Key y la transfiere a la app Kotlin
 > mediante un QR. La API Key se retorna una sola vez y no se puede recuperar después.
 
 **Autenticación:** Requiere Bearer token

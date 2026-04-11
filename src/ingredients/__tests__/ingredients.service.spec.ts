@@ -2,6 +2,8 @@ import { BadRequestException, ConflictException, NotFoundException } from "@nest
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { IngredientsService } from "../ingredients.service";
 
+vi.mock("@/config/env", () => ({ env: {} }));
+
 const mockIngredient = {
 	id: "uuid-ingredient-1",
 	name: "Carne de res",

@@ -4,8 +4,12 @@ import {
 	Injectable,
 	UnauthorizedException,
 } from "@nestjs/common";
-import { jwtVerify } from "jose";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import { env } from "@/config/env";
+
+const JWKS = createRemoteJWKSet(
+	new URL(`${env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`),
+);
 
 @Injectable()
 export class JwtGuard implements CanActivate {
@@ -20,9 +24,13 @@ export class JwtGuard implements CanActivate {
 		const token = authHeader.slice(7);
 
 		try {
-			const secret = new TextEncoder().encode(env.JWT_SECRET);
-			const { payload } = await jwtVerify(token, secret);
-			request.user = payload;
+			const { payload } = await jwtVerify(token, JWKS);
+
+			// Supabase pone nuestro rol custom en app_metadata.role
+			// El payload.role de Supabase siempre es "authenticated" — no confundir
+			const role = (payload.app_metadata as Record<string, string> | undefined)?.role;
+
+			request.user = { sub: payload.sub, role };
 			return true;
 		} catch {
 			throw new UnauthorizedException("Token inválido o expirado");

@@ -1,424 +1,278 @@
 # Esquema de base de datos
 
-SmartBite usa PostgreSQL con Prisma ORM. Todas las tablas usan UUID como
-clave primaria y timestamps `created_at` / `updated_at` gestionados por Prisma.
-
----
-
-## Diagrama ER
-
-![Diagrama ER completo de SmartBite](./assets/er-diagram.svg)
+SmartBite usa PostgreSQL 16 con Prisma ORM. La fuente de verdad técnica es `prisma/schema.prisma`. Este documento describe la intención de diseño y las decisiones no evidentes en el schema.
 
 ---
 
 ## Convenciones generales
 
-- Todas las PKs son UUID v4 generados por la base de datos.
+- Todas las PKs son UUID. Los generados por la BD usan `gen_random_uuid()`. El `id` de `users` es el UUID de Supabase Auth (no se genera en la BD).
 - Todos los timestamps usan `TIMESTAMPTZ` (con zona horaria).
-- Los campos `created_at` tienen `DEFAULT NOW()`.
-- Los campos `updated_at` se actualizan automáticamente vía Prisma.
-- Las contraseñas y API Keys nunca se guardan en texto plano, siempre como hash bcrypt.
-- Los índices, constraints y ON DELETE rules completos viven en `prisma/schema.prisma`. Este documento describe la intención de diseño; Prisma es la fuente de verdad técnica.
+- `created_at` tiene `DEFAULT NOW()`. `updated_at` se actualiza automáticamente vía Prisma (`@updatedAt`).
+- Las credenciales y API Keys nunca se guardan en texto plano. Las API Keys de dispositivos Kotlin se almacenan como hash bcrypt. Las contraseñas de empleados las gestiona Supabase Auth internamente.
+- Los índices, constraints y reglas ON DELETE completos viven en `prisma/schema.prisma`.
 
 ---
 
 ## Tablas
 
 ### users
-Almacena las cuentas de todos los usuarios del sistema. El dueño crea las
-cuentas de sus empleados directamente; no existe registro público.
+Perfil de aplicación. Las credenciales y sesiones las gestiona Supabase Auth — esta tabla almacena solo los datos propios del negocio.
 
-| Columna    | Tipo        | Constraints                   | Descripción                                    |
-| ---------- | ----------- | ----------------------------- | ---------------------------------------------- |
-| id         | UUID        | PK, DEFAULT gen_random_uuid() | Identificador único                            |
-| name       | VARCHAR     | NOT NULL                      | Nombre completo del empleado                   |
-| username   | VARCHAR     | NOT NULL, UNIQUE              | Nombre de usuario para iniciar sesión          |
-| password   | VARCHAR     | NOT NULL                      | Hash bcrypt de la contraseña                   |
-| role       | role_enum   | NOT NULL                      | `OWNER`, `CASHIER`, `WAITER`, `COOK`           |
-| is_active  | BOOLEAN     | NOT NULL, DEFAULT true        | Permite deshabilitar una cuenta sin eliminarla |
-| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()       | Fecha de creación                              |
-| updated_at | TIMESTAMPTZ | NOT NULL                      | Última modificación                            |
+| Columna | Tipo | Descripción |
+| ------- | ---- | ----------- |
+| id | UUID PK | UUID de Supabase Auth. El mismo ID en Supabase y en esta tabla. |
+| name | VARCHAR NOT NULL | Nombre completo del empleado |
+| username | VARCHAR UNIQUE NOT NULL | Nombre de usuario para iniciar sesión |
+| role | role_enum NOT NULL | `OWNER`, `CASHIER`, `WAITER`, `COOK` |
+| is_active | BOOLEAN DEFAULT true | Soft delete. Un empleado inactivo no puede iniciar sesión. |
+| created_at | TIMESTAMPTZ | Fecha de creación |
+| updated_at | TIMESTAMPTZ | Última modificación |
 
-**Índices:**
-- `idx_users_username` → UNIQUE sobre `username`. Búsqueda por login.
-- `idx_users_role` → sobre `role`. Filtrado por rol en los Guards de NestJS.
+> No hay campo `password` ni `email` en esta tabla. Las contraseñas las gestiona Supabase Auth. El email del dueño (Google) vive en Supabase Auth, no aquí.
 
----
-
-### refresh_tokens
-Un usuario puede tener múltiples sesiones activas simultáneas. Los tokens
-se revocan con `revoked_at` en lugar de eliminarse físicamente para mantener
-trazabilidad de sesiones comprometidas o cierres de sesión.
-
-| Columna    | Tipo         | Constraints                   | Descripción                                    |
-| ---------- | ------------ | ----------------------------- | ---------------------------------------------- |
-| id         | UUID         | PK, DEFAULT gen_random_uuid() | Identificador único                            |
-| user_id    | UUID         | NOT NULL, FK → users(id)      | Usuario al que pertenece                       |
-| token_hash | VARCHAR(255) | NOT NULL, UNIQUE              | SHA-256 hash del token. Nunca texto plano      |
-| expires_at | TIMESTAMPTZ  | NOT NULL                      | Fecha de expiración (7 días desde la creación) |
-| revoked_at | TIMESTAMPTZ  | NULL                          | Fecha de revocación (logout o compromiso)      |
-| created_at | TIMESTAMPTZ  | NOT NULL, DEFAULT NOW()       | Fecha de emisión                               |
-
-**Índices:**
-- `idx_refresh_tokens_token_hash` → UNIQUE sobre `token_hash`. Validación del token en cada request.
-- `idx_refresh_tokens_user_id` → sobre `user_id`. Listar sesiones activas de un usuario.
-
-**ON DELETE:** `user_id` → CASCADE. Si se elimina el usuario, se eliminan todos sus tokens.
+**Índices:** `idx_users_role` sobre `role` — filtrado por rol en los Guards.
 
 ---
 
 ### products
-Carta de productos del negocio. Solo el dueño puede crear o modificar precios.
+Carta de productos del negocio.
 
-| Columna    | Tipo        | Constraints                   | Descripción                                         |
-| ---------- | ----------- | ----------------------------- | --------------------------------------------------- |
-| id         | UUID        | PK, DEFAULT gen_random_uuid() | Identificador único                                 |
-| name       | VARCHAR     | NOT NULL                      | Nombre del producto                                 |
-| price      | DECIMAL     | NOT NULL, CHECK (price > 0)   | Precio de venta en soles                            |
-| category   | VARCHAR     | NOT NULL                      | Categoría (ej: hamburguesas, bebidas)               |
-| is_active  | BOOLEAN     | NOT NULL, DEFAULT true        | Permite quitar un producto de la carta sin borrarlo |
-| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()       | Fecha de creación                                   |
-| updated_at | TIMESTAMPTZ | NOT NULL                      | Última modificación                                 |
+| Columna | Tipo | Descripción |
+| ------- | ---- | ----------- |
+| id | UUID PK | Generado por la BD |
+| name | VARCHAR NOT NULL | Nombre del producto |
+| price | DECIMAL(10,2) CHECK > 0 | Precio de venta en soles |
+| category | VARCHAR NOT NULL | Categoría (hamburguesas, bebidas, etc.) |
+| is_active | BOOLEAN DEFAULT true | Soft delete. El historial de ventas se conserva. |
+| created_at / updated_at | TIMESTAMPTZ | Timestamps |
 
-**Índices:**
-- `idx_products_is_active` → sobre `is_active`. Filtrar solo productos activos en la carta.
-- `idx_products_category` → sobre `category`. Filtrado por categoría en el menú.
+**Índices:** `idx_products_is_active`, `idx_products_category`.
 
 ---
 
 ### ingredients
-Insumos del negocio con control de stock.
+Insumos con control de stock.
 
-| Columna       | Tipo        | Constraints                      | Descripción                                                                                              |
-| ------------- | ----------- | -------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| id            | UUID        | PK, DEFAULT gen_random_uuid()    | Identificador único                                                                                      |
-| name          | VARCHAR     | NOT NULL                         | Nombre del insumo                                                                                        |
-| unit          | VARCHAR     | NOT NULL                         | Unidad de medida (kg, unidades, litros)                                                                  |
-| stock         | DECIMAL     | NOT NULL, DEFAULT 0, CHECK (≥ 0) | Stock actual                                                                                             |
-| min_stock     | DECIMAL     | NOT NULL, DEFAULT 0, CHECK (≥ 0) | Umbral mínimo para activar la alerta OPS-7                                                               |
-| cost_per_unit | DECIMAL     | NOT NULL, CHECK (> 0)            | Costo unitario en soles. Requerido para calcular márgenes en REP-3 y la vista `v_product_profitability`. |
-| created_at    | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()          | Fecha de creación                                                                                        |
-| updated_at    | TIMESTAMPTZ | NOT NULL                         | Última modificación                                                                                      |
+| Columna | Tipo | Descripción |
+| ------- | ---- | ----------- |
+| id | UUID PK | |
+| name | VARCHAR NOT NULL | Nombre del insumo |
+| unit | VARCHAR NOT NULL | Unidad de medida (kg, unidades, litros) |
+| stock | DECIMAL(10,3) DEFAULT 0 CHECK ≥ 0 | Stock actual |
+| min_stock | DECIMAL(10,3) DEFAULT 0 CHECK ≥ 0 | Umbral mínimo para la alerta OPS-7 |
+| cost_per_unit | DECIMAL(10,4) CHECK > 0 | Costo unitario en soles. Requerido para REP-3. |
+| created_at / updated_at | TIMESTAMPTZ | |
 
-> **`is_low_stock`** NO es una columna de la BD. Es un campo calculado (`stock <= min_stock`)
-> que el `IngredientsService` agrega a la respuesta de la API. No se persiste en PostgreSQL.
+> `is_low_stock` NO es columna de BD. Es un campo calculado (`stock <= min_stock`) que `IngredientsService` agrega a la respuesta. No se persiste.
 
-**Índices:**
-- `idx_ingredients_stock` → sobre `stock`. Consultas de alertas de stock bajo (OPS-7).
+**Índices:** `idx_ingredients_stock`. Hay un índice parcial adicional `idx_ingredients_low_stock` (`WHERE stock <= min_stock`) declarado en `prisma/sql/03_indexes.sql` — Prisma no puede expresar índices parciales en el schema.
 
 ---
 
 ### recipes
-Relación entre productos e insumos. Define cuánto de cada insumo consume
-una unidad del producto. Sin recetas no funcionan OPS-2, IA-3 ni REP-3.
+Relación producto-insumo. Define cuánto de cada insumo consume una unidad del producto. Sin recetas no funcionan OPS-2 (descuento de stock), IA-3 (MRP) ni REP-3 (rentabilidad).
 
-| Columna       | Tipo    | Constraints                    | Descripción                                |
-| ------------- | ------- | ------------------------------ | ------------------------------------------ |
-| id            | UUID    | PK, DEFAULT gen_random_uuid()  | Identificador único                        |
-| product_id    | UUID    | NOT NULL, FK → products(id)    | Producto al que pertenece la receta        |
-| ingredient_id | UUID    | NOT NULL, FK → ingredients(id) | Insumo requerido                           |
-| quantity      | DECIMAL | NOT NULL, CHECK (quantity > 0) | Cantidad del insumo por unidad de producto |
+| Columna | Tipo | Descripción |
+| ------- | ---- | ----------- |
+| id | UUID PK | |
+| product_id | UUID FK → products | |
+| ingredient_id | UUID FK → ingredients | |
+| quantity | DECIMAL(10,4) CHECK > 0 | Cantidad del insumo por unidad de producto |
 
-**Constraints:**
-- `uq_recipes_product_ingredient` → UNIQUE sobre `(product_id, ingredient_id)`.
-
-**Índices:**
-- `idx_recipes_product_id` → sobre `product_id`. Obtener la receta completa de un producto.
-
-**ON DELETE:**
-- `product_id` → CASCADE. Si se elimina el producto, se elimina su receta.
-- `ingredient_id` → RESTRICT. No se puede eliminar un insumo que esté en una receta activa.
+**Constraints:** `uq_recipes_product_ingredient` UNIQUE sobre `(product_id, ingredient_id)`.
+**ON DELETE:** `product_id` → CASCADE. `ingredient_id` → RESTRICT (no se puede eliminar un insumo en una receta activa).
 
 ---
 
 ### sales
-Registro de cada orden. Nace con estado `OPEN` cuando el mozo o cajero
-la registra. El stock se descuenta únicamente al confirmar el cobro (`PAID_*`).
-El `id` funciona como número de ticket del cliente.
+Registro de cada orden. El `id` funciona como número de ticket del cliente.
 
-| Columna       | Tipo             | Constraints                   | Descripción                                                                                                                                                                                                             |
-| ------------- | ---------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| id            | UUID             | PK, DEFAULT gen_random_uuid() | Identificador único. Es el número de ticket del cliente                                                                                                                                                                 |
-| user_id       | UUID             | NOT NULL, FK → users(id)      | Empleado que registró la orden (mozo o cajero)                                                                                                                                                                          |
-| status        | sale_status_enum | NOT NULL, DEFAULT 'OPEN'      | `OPEN`, `PAID_CASH`, `PAID_YAPE`, `PAID_PLIN`, `PAID_AGORA`, `CANCELLED`                                                                                                                                                |
-| total         | DECIMAL          | NOT NULL, CHECK (total > 0)   | Suma de `sale_items.unit_price * quantity`. Desnormalizado intencionalmente para evitar un JOIN costoso en el dashboard y reportes en tiempo real. Se calcula en `SalesService.create()` y nunca se edita directamente. |
-| table_number  | VARCHAR(10)      | NULL                          | Número o identificador de mesa. NULL para pedidos en mostrador o para llevar. Cambiado de INT a VARCHAR para admitir identificadores alfanuméricos (ej: "A3", "Terraza-2").                                             |
-| customer_name | VARCHAR          | NULL                          | Nombre del cliente. Opcional, solo si el mozo lo registra                                                                                                                                                               |
-| updated_by    | UUID             | NULL, FK → users(id)          | Usuario que realizó la última corrección (OPS-6)                                                                                                                                                                        |
-| cancelled_by  | UUID             | NULL, FK → users(id)          | Usuario que canceló la orden                                                                                                                                                                                            |
-| cancelled_at  | TIMESTAMPTZ      | NULL                          | Fecha y hora de la cancelación                                                                                                                                                                                          |
-| created_at    | TIMESTAMPTZ      | NOT NULL, DEFAULT NOW()       | Fecha y hora de creación de la orden                                                                                                                                                                                    |
-| updated_at    | TIMESTAMPTZ      | NOT NULL                      | Última modificación                                                                                                                                                                                                     |
+| Columna | Tipo | Descripción |
+| ------- | ---- | ----------- |
+| id | UUID PK | Número de ticket del cliente |
+| status | sale_status_enum DEFAULT OPEN | Ver estados abajo |
+| total | DECIMAL(10,2) CHECK > 0 | Suma de items. Desnormalizado intencionalmente — se calcula al crear y nunca se edita. |
+| table_number | VARCHAR(10) NULL | Número de mesa. VARCHAR para admitir "A3", "Terraza-2". NULL para mostrador. |
+| customer_name | VARCHAR NULL | Nombre del cliente, opcional |
+| user_id | UUID FK → users | Empleado que registró la orden |
+| updated_by | UUID FK → users NULL | Usuario que realizó la última corrección (OPS-6) |
+| cancelled_by | UUID FK → users NULL | Usuario que canceló |
+| cancelled_at | TIMESTAMPTZ NULL | Fecha de cancelación |
+| created_at / updated_at | TIMESTAMPTZ | |
 
-> **`table_number` como VARCHAR:** Permite identificadores como "5", "A3" o "Terraza-2"
-> sin necesidad de conversión. NULL para pedidos para llevar o en mostrador sin mesa.
-> Se usa para recuperar órdenes cuando el cliente pierde su ticket (el cajero filtra
-> por `table_number` + estado `OPEN` en OPS-6).
+**Estados:** `OPEN`, `PAID_CASH`, `PAID_YAPE`, `PAID_PLIN`, `PAID_AGORA`, `CANCELLED`.
 
-> **Estados de la orden:**
-> - `OPEN` → orden registrada, en preparación o lista para cobrar
-> - `PAID_CASH` → cobrada en efectivo, confirmada por el cajero
-> - `PAID_YAPE` → cobrada por Yape, confirmada manualmente por el cajero
-> - `PAID_PLIN` → cobrada por Plin, confirmada manualmente por el cajero
-> - `PAID_AGORA` → cobrada por Ágora, confirmada manualmente por el cajero
-> - `CANCELLED` → cancelada antes de cobrar. El stock no se toca nunca en este estado
->   porque el stock solo baja al confirmar el cobro, no al crear la orden.
+**Regla crítica:** el stock se descuenta **solo al confirmar el cobro** (`PAID_*`), nunca al crear la orden ni al cancelarla.
 
-> **Reglas de cancelación (ADR-0013):**
-> Solo se puede cancelar una orden en estado `OPEN`. Las órdenes en estado `PAID_*`
-> no pueden cancelarse. Las correcciones post-cobro se hacen vía OPS-6
-> (`PATCH /sales/:id`) que registra `updated_by` y `updated_at` pero **no revierte el stock**.
->
-> Tabla de transiciones permitidas:
->
-> | Estado actual | Transición permitida      | Efecto en stock         | Quién puede                              |
-> | ------------- | ------------------------- | ----------------------- | ---------------------------------------- |
-> | `OPEN`        | → `PAID_*`                | Descuenta según recetas | `OWNER`, `CASHIER`                       |
-> | `OPEN`        | → `CANCELLED`             | Sin efecto              | `OWNER`, `CASHIER`, `WAITER` (solo propias) |
-> | `PAID_*`      | Corrección OPS-6          | Sin efecto en stock     | `OWNER` únicamente                       |
-> | `PAID_*`      | → `CANCELLED`             | ❌ No permitido (422)   | —                                        |
-> | `CANCELLED`   | Cualquier cambio          | ❌ No permitido (422)   | —                                        |
+**Transiciones:**
+- `OPEN` → `PAID_*`: OWNER o CASHIER. Descuenta stock.
+- `OPEN` → `CANCELLED`: OWNER, CASHIER, o el WAITER que creó la orden.
+- `PAID_*` → `CANCELLED`: no permitido (422).
+- Corrección OPS-6 (`PATCH /sales/:id`): solo OWNER. Registra `updated_by` y `updated_at`. No revierte stock.
 
-> **Flujo de ticket perdido:**
-> El cajero filtra las órdenes por `table_number` y estado `OPEN`. El cliente describe
-> qué consumió y el cajero ubica la orden por los productos. Si dos clientes en la misma
-> mesa pidieron exactamente lo mismo y ambos perdieron su ticket, el cajero puede cobrar
-> cualquiera de las dos órdenes ya que el monto es idéntico.
-
-**Índices:**
-- `idx_sales_status` → sobre `status`. Filtrar órdenes abiertas en la pantalla del cajero.
-- `idx_sales_table_number` → sobre `table_number`. Filtrar órdenes por mesa en OPS-6.
-- `idx_sales_user_id` → sobre `user_id`. Historial de órdenes por empleado (OPS-6).
-- `idx_sales_created_at` → sobre `created_at`. Reportes y cierres de caja por fecha.
-
-**ON DELETE:**
-- `user_id` → RESTRICT. No se puede eliminar un usuario con ventas registradas.
-- `updated_by` → SET NULL. Si se elimina el usuario corrector, se conserva la venta.
-- `cancelled_by` → SET NULL. Si se elimina el usuario que canceló, se conserva la orden.
+**Índices:** `idx_sales_status`, `idx_sales_table_number`, `idx_sales_user_id`, `idx_sales_created_at`. Hay un índice parcial adicional `idx_sales_open_today` (`WHERE status = 'OPEN'`) en `prisma/sql/03_indexes.sql`.
 
 ---
 
 ### sale_items
-Detalle de productos dentro de una orden. Se guarda `unit_price` al momento
-de la orden para que un cambio de precio futuro no altere el historial.
+Detalle de productos dentro de una orden.
 
-| Columna    | Tipo    | Constraints                      | Descripción                            |
-| ---------- | ------- | -------------------------------- | -------------------------------------- |
-| id         | UUID    | PK, DEFAULT gen_random_uuid()    | Identificador único                    |
-| sale_id    | UUID    | NOT NULL, FK → sales(id)         | Orden a la que pertenece               |
-| product_id | UUID    | NOT NULL, FK → products(id)      | Producto ordenado                      |
-| quantity   | INT     | NOT NULL, CHECK (quantity > 0)   | Cantidad ordenada                      |
-| unit_price | DECIMAL | NOT NULL, CHECK (unit_price > 0) | Precio unitario al momento de la orden |
-
-**Índices:**
-- `idx_sale_items_sale_id` → sobre `sale_id`. Obtener el detalle completo de una orden.
-- `idx_sale_items_product_id` → sobre `product_id`. Reportes de ventas por producto (REP-3).
-
-**ON DELETE:**
-- `sale_id` → CASCADE. Si se elimina la orden, se eliminan sus ítems.
-- `product_id` → RESTRICT. No se puede eliminar un producto con ventas registradas.
+| Columna | Tipo | Descripción |
+| ------- | ---- | ----------- |
+| id | UUID PK | |
+| sale_id | UUID FK → sales CASCADE | |
+| product_id | UUID FK → products RESTRICT | |
+| quantity | INT CHECK > 0 | |
+| unit_price | DECIMAL(10,2) CHECK > 0 | Precio al momento de la orden. Un cambio de precio futuro no altera el historial. |
 
 ---
 
 ### expenses
-Gastos operativos del negocio. Base del cálculo de ganancia en REP-4.
-Registrar un gasto no actualiza el stock automáticamente — son operaciones
-separadas. El gasto es un movimiento financiero; el stock es el inventario físico.
+Gastos operativos. Base del cálculo de ganancia en REP-4.
 
-| Columna     | Tipo        | Constraints                   | Descripción                                     |
-| ----------- | ----------- | ----------------------------- | ----------------------------------------------- |
-| id          | UUID        | PK, DEFAULT gen_random_uuid() | Identificador único                             |
-| description | VARCHAR     | NOT NULL                      | Descripción del gasto                           |
-| amount      | DECIMAL     | NOT NULL, CHECK (amount > 0)  | Monto en soles                                  |
-| category    | VARCHAR     | NOT NULL                      | Categoría (insumos, alquiler, servicios, otros) |
-| user_id     | UUID        | NOT NULL, FK → users(id)      | Usuario que registró el gasto                   |
-| created_at  | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()       | Fecha del gasto                                 |
+| Columna | Tipo | Descripción |
+| ------- | ---- | ----------- |
+| id | UUID PK | |
+| description | VARCHAR NOT NULL | |
+| amount | DECIMAL(10,2) CHECK > 0 | Monto en soles |
+| category | VARCHAR NOT NULL | insumos, alquiler, servicios, otros |
+| user_id | UUID FK → users RESTRICT | Usuario que registró el gasto |
+| created_at | TIMESTAMPTZ | |
 
-**Índices:**
-- `idx_expenses_created_at` → sobre `created_at`. Sumar gastos del día en el cierre de caja.
-- `idx_expenses_user_id` → sobre `user_id`. Gastos registrados por empleado.
-
-**ON DELETE:**
-- `user_id` → RESTRICT. No se puede eliminar un usuario con gastos registrados.
+> Registrar un gasto no actualiza el stock. Son operaciones separadas: el gasto es un movimiento financiero; el stock es el inventario físico.
 
 ---
 
 ### cash_closes
-Cierre de caja diario. Registro inmutable: no se permite UPDATE ni DELETE
-sobre esta tabla a nivel de API ni de base de datos.
+Cierre de caja diario. Registro inmutable.
 
-| Columna         | Tipo        | Constraints                   | Descripción                                        |
-| --------------- | ----------- | ----------------------------- | -------------------------------------------------- |
-| id              | UUID        | PK, DEFAULT gen_random_uuid() | Identificador único                                |
-| date            | DATE        | NOT NULL, UNIQUE              | Fecha del cierre. Solo uno por día                 |
-| cash_income     | DECIMAL     | NOT NULL, DEFAULT 0           | Suma de todas las órdenes PAID_CASH del día        |
-| digital_income  | DECIMAL     | NOT NULL, DEFAULT 0           | Suma de PAID_YAPE + PAID_PLIN + PAID_AGORA del día |
-| total_income    | DECIMAL     | NOT NULL                      | cash_income + digital_income ¹                     |
-| total_expenses  | DECIMAL     | NOT NULL, DEFAULT 0           | Total de gastos del día                            |
-| net_profit      | DECIMAL     | NOT NULL                      | total_income − total_expenses ¹                    |
-| closed_by       | UUID        | NOT NULL, FK → users(id)      | Usuario que generó el cierre                       |
-| parent_close_id | UUID        | NULL, FK → cash_closes(id)    | Referencia al cierre original si es un ajuste      |
-| created_at      | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()       | Fecha y hora de generación                         |
+| Columna | Tipo | Descripción |
+| ------- | ---- | ----------- |
+| id | UUID PK | |
+| date | DATE | Fecha del cierre |
+| cash_income | DECIMAL(10,2) DEFAULT 0 | Suma de órdenes PAID_CASH del día |
+| digital_income | DECIMAL(10,2) DEFAULT 0 | Suma de PAID_YAPE + PAID_PLIN + PAID_AGORA |
+| total_income | DECIMAL(10,2) | cash + digital. Desnormalizado intencionalmente. |
+| total_expenses | DECIMAL(10,2) DEFAULT 0 | Total de gastos del día |
+| net_profit | DECIMAL(10,2) | total_income − total_expenses. Desnormalizado. |
+| closed_by | UUID FK → users RESTRICT | |
+| parent_close_id | UUID FK → cash_closes NULL | Si es un cierre de ajuste, apunta al original |
+| created_at | TIMESTAMPTZ | |
 
-> ¹ **Desnormalización intencional:** `total_income` y `net_profit` violan la 3FN de forma
-> deliberada para preservar la integridad del registro histórico inmutable.
-> Ver `decisions/0005-cash-close-immutability.md`.
+> `total_income` y `net_profit` violan la 3FN intencionalmente para preservar la integridad del registro histórico inmutable. Si los valores base cambian después, el cierre ya generado no se altera.
 
-> **Ganancia estimada en REP-1 vs net_profit aquí:** El campo `net_profit` de esta tabla
-> es el valor definitivo al momento del cierre, calculado sobre todos los datos del día.
-> La "ganancia estimada" del dashboard (REP-1) es un valor en tiempo real calculado por
-> el `DashboardService` combinando `v_daily_summary` (ingresos) con una query separada
-> a `expenses WHERE created_at::date = CURRENT_DATE` (gastos). Son dos valores distintos:
-> uno en tiempo real y uno histórico inmutable.
+**Unicidad:** solo un cierre normal por día. Implementado como índice parcial `uq_cash_closes_date_normal` (`WHERE parent_close_id IS NULL`) en `prisma/sql/03_indexes.sql` — los cierres de ajuste no tienen restricción de fecha única.
 
-**Constraints:**
-- `uq_cash_closes_date` → UNIQUE sobre `date`. Solo se permite un cierre por día.
-- El cierre de ajuste NO tiene restricción UNIQUE sobre `date` porque puede haber
-  múltiples ajustes del mismo día. La restricción aplica solo a cierres normales
-  (`parent_close_id IS NULL`). Implementar con un índice parcial:
-  `CREATE UNIQUE INDEX uq_cash_closes_date_normal ON cash_closes (date) WHERE parent_close_id IS NULL;`
-
-**ON DELETE:**
-- `closed_by` → RESTRICT.
-- `parent_close_id` → RESTRICT.
+**Inmutabilidad:** además de no exponer PUT/DELETE en la API, el rol de la aplicación en PostgreSQL no tiene permisos UPDATE ni DELETE sobre esta tabla (`prisma/sql/02_roles.sql`).
 
 ---
 
 ### payment_notifications
-Notificaciones de pago recibidas por el listener Kotlin (PAG-1). Son
-puramente informativas: el cajero las consulta como referencia visual para
-confirmar pagos digitales de forma manual.
+Notificaciones de pago recibidas por el listener Kotlin (PAG-1). Puramente informativas.
 
-| Columna         | Tipo                | Constraints                   | Descripción                                                                                                      |
-| --------------- | ------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| id              | UUID                | PK, DEFAULT gen_random_uuid() | Identificador único                                                                                              |
-| notification_id | VARCHAR             | NOT NULL, UNIQUE              | ID único de la notificación. Garantiza idempotencia                                                              |
-| amount          | DECIMAL             | NOT NULL, CHECK (amount > 0)  | Monto recibido                                                                                                   |
-| sender_name     | VARCHAR             | NOT NULL                      | Nombre del remitente extraído de la notificación                                                                 |
-| source          | payment_source_enum | NOT NULL                      | `YAPE`, `PLIN`, `AGORA`                                                                                          |
-| raw_text        | VARCHAR(500)        | NOT NULL                      | Texto completo de la notificación interceptada. Útil para debugging y para re-parsear si el patrón se actualiza. |
-| is_reviewed     | BOOLEAN             | NOT NULL, DEFAULT false       | Indica si el cajero ya atendió esta notificación                                                                 |
-| reviewed_by     | UUID                | NULL, FK → users(id)          | Usuario que marcó la notificación como revisada                                                                  |
-| reviewed_at     | TIMESTAMPTZ         | NULL                          | Fecha y hora en que se marcó como revisada                                                                       |
-| created_at      | TIMESTAMPTZ         | NOT NULL, DEFAULT NOW()       | Fecha y hora en que se recibió la notificación                                                                   |
+| Columna | Tipo | Descripción |
+| ------- | ---- | ----------- |
+| id | UUID PK | |
+| notification_id | VARCHAR UNIQUE NOT NULL | ID único de la notificación. Garantiza idempotencia. |
+| amount | DECIMAL(10,2) CHECK > 0 | Monto recibido |
+| sender_name | VARCHAR NOT NULL | Nombre del remitente |
+| source | payment_source_enum NOT NULL | `YAPE`, `PLIN`, `AGORA` |
+| raw_text | VARCHAR(500) NOT NULL | Texto completo de la notificación. Útil para debugging y re-parseo. |
+| is_reviewed | BOOLEAN DEFAULT false | El cajero ya atendió esta notificación |
+| reviewed_by | UUID FK → users NULL SET NULL | |
+| reviewed_at | TIMESTAMPTZ NULL | |
+| created_at | TIMESTAMPTZ | |
 
-> Esta tabla no tiene FK hacia `sales` de forma intencional. El cajero conecta
-> visualmente la notificación con la orden por nombre, monto y número de mesa.
-> La relación es operativa (la hace el cajero), no estructural (no la hace la BD).
-
-**Índices:**
-- `idx_payment_notifications_notification_id` → UNIQUE. Idempotencia.
-- `idx_payment_notifications_is_reviewed` → sobre `is_reviewed`.
-- `idx_payment_notifications_created_at` → sobre `created_at`.
-
-**ON DELETE:**
-- `reviewed_by` → SET NULL. Si se elimina el usuario, la notificación conserva su estado revisado.
+> No hay FK hacia `sales`. El cajero conecta visualmente la notificación con la orden por nombre, monto y número de mesa. La relación es operativa, no estructural.
 
 ---
 
 ### device_tokens
-Dispositivos Android autorizados para enviar notificaciones de pago (PAG-1).
+Dispositivos Android autorizados para enviar notificaciones de pago.
 
-| Columna       | Tipo        | Constraints                   | Descripción                                                   |
-| ------------- | ----------- | ----------------------------- | ------------------------------------------------------------- |
-| id            | UUID        | PK, DEFAULT gen_random_uuid() | Identificador único                                           |
-| name          | VARCHAR     | NOT NULL                      | Nombre descriptivo del dispositivo (ej: "Celular caja")       |
-| api_key_hash  | VARCHAR     | NOT NULL, UNIQUE              | Hash bcrypt de la API Key. Nunca texto plano                  |
-| is_active     | BOOLEAN     | NOT NULL, DEFAULT true        | `false` cuando el dueño revoca el dispositivo                 |
-| registered_by | UUID        | NOT NULL, FK → users(id)      | Dueño que registró el dispositivo vía QR                      |
-| last_used_at  | TIMESTAMPTZ | NULL                          | Última vez que se usó la clave. Actualizable por el listener. |
-| revoked_at    | TIMESTAMPTZ | NULL                          | Fecha y hora de revocación. NULL mientras esté activo.        |
-| created_at    | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()       | Fecha de registro                                             |
+| Columna | Tipo | Descripción |
+| ------- | ---- | ----------- |
+| id | UUID PK | |
+| name | VARCHAR NOT NULL | Nombre descriptivo ("Celular caja") |
+| api_key_hash | VARCHAR UNIQUE NOT NULL | Hash bcrypt de la API Key. Nunca texto plano. |
+| is_active | BOOLEAN DEFAULT true | false cuando el dueño revoca el dispositivo |
+| registered_by | UUID FK → users RESTRICT | Dueño que registró el dispositivo |
+| last_used_at | TIMESTAMPTZ NULL | Última vez que se usó la clave |
+| revoked_at | TIMESTAMPTZ NULL | Fecha de revocación |
+| created_at | TIMESTAMPTZ | |
 
-> **`revoked_at`:** Se setea cuando el dueño pulsa "Revocar dispositivo" en Flutter.
-> Junto con `is_active = false`, permite auditar cuándo y por qué se revocó un dispositivo.
-> Un dispositivo con `is_active = false` recibe `401` inmediatamente en cualquier POST.
-
-**Índices:**
-- `idx_device_tokens_api_key_hash` → UNIQUE. Validación de la API Key en cada POST.
-- `idx_device_tokens_is_active` → sobre `is_active`.
-
-**ON DELETE:**
-- `registered_by` → RESTRICT.
+> La API Key se retorna en texto plano una sola vez al registrar el dispositivo. Si se pierde, hay que revocar y registrar uno nuevo.
 
 ---
 
 ### reference_baselines
-Promedios de referencia configurables para cuando IA-2 tiene menos de 14 días
-de datos propios. El seeder los pre-puebla con los promedios del primer mes
-de datos sintéticos.
+Promedios de referencia por producto y día de la semana. Se usan en IA-2 cuando hay menos de 14 días de historial propio.
 
-| Columna     | Tipo        | Constraints                    | Descripción                                  |
-| ----------- | ----------- | ------------------------------ | -------------------------------------------- |
-| id          | UUID        | PK, DEFAULT gen_random_uuid()  | Identificador único                          |
-| product_id  | UUID        | NOT NULL, FK → products(id)    | Producto al que aplica la referencia         |
-| day_of_week | INT         | NOT NULL, CHECK (0 ≤ day ≤ 6)  | Día de la semana (0 = lunes … 6 = domingo)   |
-| quantity    | DECIMAL     | NOT NULL, CHECK (quantity > 0) | Cantidad de referencia sugerida para ese día |
-| updated_at  | TIMESTAMPTZ | NOT NULL                       | Última vez que se actualizó el valor         |
+| Columna | Tipo | Descripción |
+| ------- | ---- | ----------- |
+| id | UUID PK | |
+| product_id | UUID FK → products CASCADE | |
+| day_of_week | INT CHECK 0-6 | 0 = lunes … 6 = domingo |
+| quantity | DECIMAL(10,2) CHECK > 0 | Cantidad de referencia sugerida |
+| updated_at | TIMESTAMPTZ | |
 
-**Constraints:**
-- `uq_reference_baselines_product_day` → UNIQUE sobre `(product_id, day_of_week)`.
-
-**ON DELETE:**
-- `product_id` → CASCADE.
+**Constraints:** `uq_reference_baselines_product_day` UNIQUE sobre `(product_id, day_of_week)`.
 
 ---
 
 ### daily_production_plans
 Plan de producción diario precalculado por el cron job de las 6 a.m.
-Todos los clientes leen esta tabla; ningún cliente ejecuta IA en tiempo real.
 
-| Columna           | Tipo        | Constraints                    | Descripción                                                                |
-| ----------------- | ----------- | ------------------------------ | -------------------------------------------------------------------------- |
-| id                | UUID        | PK, DEFAULT gen_random_uuid()  | Identificador único                                                        |
-| date              | DATE        | NOT NULL                       | Fecha del plan                                                             |
-| product_id        | UUID        | NOT NULL, FK → products(id)    | Producto                                                                   |
-| quantity          | DECIMAL     | NOT NULL, CHECK (quantity > 0) | Unidades sugeridas para producir                                           |
-| prediction_source | VARCHAR(50) | NOT NULL                       | `holt_winters_with_adjustment`, `holt_winters_base`, `reference_baselines` |
-| created_at        | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()        | Fecha de generación                                                        |
+| Columna | Tipo | Descripción |
+| ------- | ---- | ----------- |
+| id | UUID PK | |
+| date | DATE | Fecha del plan |
+| product_id | UUID FK → products CASCADE | |
+| quantity | DECIMAL(10,2) CHECK > 0 | Unidades sugeridas a producir |
+| prediction_source | VARCHAR(50) | `holt_winters_with_adjustment`, `holt_winters_base`, `reference_baselines` |
+| created_at | TIMESTAMPTZ | |
 
-> **`prediction_source`** indica cómo se generó el plan:
-> - `holt_winters_with_adjustment` → cron normal, Holt-Winters + ajuste de Claude API.
-> - `holt_winters_base` → cron corrió pero Claude API falló; se usó predicción sin ajuste.
-> - `reference_baselines` → menos de 14 días de historial; se usaron promedios de referencia.
->
-> El cliente Flutter usa este campo para mostrar un aviso si el plan no es el óptimo.
+> `prediction_source` permite al cliente Kotlin mostrar un aviso si el plan no es el óptimo (por falta de historial o fallo de Claude API).
 
-**Constraints:**
-- `uq_daily_production_plans_date_product` → UNIQUE sobre `(date, product_id)`.
+**Constraints:** `uq_daily_production_plans_date_product` UNIQUE sobre `(date, product_id)`.
 
-**Índices:**
-- `idx_daily_production_plans_date` → sobre `date`.
+---
 
-**ON DELETE:**
-- `product_id` → CASCADE.
+## Vistas SQL
+
+Declaradas en `prisma/sql/01_views.sql` y tipadas en Prisma con `view` para obtener tipado en el cliente. Solo lectura.
+
+| Vista | Uso | Descripción |
+| ----- | --- | ----------- |
+| `v_daily_summary` | REP-1 Dashboard | Agrega totales del día: ingresos por método de pago, órdenes abiertas y pagadas. Evita JOINs costosos en cada request del dashboard. |
+| `v_product_profitability` | REP-3 Rentabilidad | Calcula el margen unitario por producto cruzando precio de venta, recetas e ingredientes. Sin esta vista, REP-3 requiere un JOIN de cuatro tablas en cada consulta. |
 
 ---
 
 ## Enums
 
-| Enum                  | Valores                                                                  |
-| --------------------- | ------------------------------------------------------------------------ |
-| `role_enum`           | `OWNER`, `CASHIER`, `WAITER`, `COOK`                                     |
-| `sale_status_enum`    | `OPEN`, `PAID_CASH`, `PAID_YAPE`, `PAID_PLIN`, `PAID_AGORA`, `CANCELLED` |
-| `payment_source_enum` | `YAPE`, `PLIN`, `AGORA`                                                  |
+| Enum | Valores |
+| ---- | ------- |
+| `role_enum` | `OWNER`, `CASHIER`, `WAITER`, `COOK` |
+| `sale_status_enum` | `OPEN`, `PAID_CASH`, `PAID_YAPE`, `PAID_PLIN`, `PAID_AGORA`, `CANCELLED` |
+| `payment_source_enum` | `YAPE`, `PLIN`, `AGORA` |
 
 ---
 
 ## Relaciones principales
 
-| Tabla origen | Tabla destino          | Tipo  | ON DELETE | Descripción                                     |
-| ------------ | ---------------------- | ----- | --------- | ----------------------------------------------- |
-| users        | refresh_tokens         | 1 a N | CASCADE   | Un usuario puede tener varias sesiones activas  |
-| users        | sales                  | 1 a N | RESTRICT  | Un usuario registra muchas órdenes              |
-| users        | expenses               | 1 a N | RESTRICT  | Un usuario registra muchos gastos               |
-| users        | cash_closes            | 1 a N | RESTRICT  | Un usuario genera muchos cierres de caja        |
-| users        | device_tokens          | 1 a N | RESTRICT  | Un dueño puede registrar varios dispositivos    |
-| sales        | sale_items             | 1 a N | CASCADE   | Una orden tiene uno o más ítems                 |
-| products     | sale_items             | 1 a N | RESTRICT  | Un producto aparece en muchas órdenes           |
-| products     | recipes                | 1 a N | CASCADE   | Un producto tiene una receta con varios insumos |
-| ingredients  | recipes                | 1 a N | RESTRICT  | Un insumo aparece en varias recetas             |
-| cash_closes  | cash_closes            | 1 a 1 | RESTRICT  | Un cierre de ajuste referencia al original      |
-| products     | reference_baselines    | 1 a N | CASCADE   | Un producto tiene referencias por día           |
-| products     | daily_production_plans | 1 a N | CASCADE   | Un producto aparece en varios planes diarios    |
-| users        | payment_notifications  | 1 a N | SET NULL  | Un cajero puede revisar muchas notificaciones   |
+| Origen | Destino | Tipo | ON DELETE | Descripción |
+| ------ | ------- | ---- | --------- | ----------- |
+| users | sales | 1 a N | RESTRICT | Un usuario registra muchas órdenes |
+| users | expenses | 1 a N | RESTRICT | Un usuario registra muchos gastos |
+| users | cash_closes | 1 a N | RESTRICT | Un usuario genera muchos cierres |
+| users | device_tokens | 1 a N | RESTRICT | Un dueño registra varios dispositivos |
+| sales | sale_items | 1 a N | CASCADE | Una orden tiene uno o más ítems |
+| products | sale_items | 1 a N | RESTRICT | Un producto aparece en muchas órdenes |
+| products | recipes | 1 a N | CASCADE | Un producto tiene receta con insumos |
+| ingredients | recipes | 1 a N | RESTRICT | Un insumo aparece en varias recetas |
+| cash_closes | cash_closes | 1 a 1 | RESTRICT | Un ajuste referencia al cierre original |
+| products | reference_baselines | 1 a N | CASCADE | Un producto tiene referencias por día |
+| products | daily_production_plans | 1 a N | CASCADE | Un producto aparece en varios planes |
+| users | payment_notifications | 1 a N | SET NULL | Un cajero revisa muchas notificaciones |

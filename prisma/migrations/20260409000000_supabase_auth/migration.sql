@@ -1,3 +1,17 @@
+-- Migration baseline: SmartBite con Supabase Auth
+--
+-- IMPORTANTE: las tablas ya existen en Supabase (creadas via supabase-setup.sql).
+-- Esta migration es el registro formal del schema actual para Prisma Migrate.
+--
+-- Una sola vez en cada proyecto de Supabase (dev/prod), ejecutar:
+--   pnpm db:baseline
+-- Eso marca esta migration como "ya aplicada" sin tocar la BD.
+--
+-- Cambios respecto a la migration anterior (20260326180610_init):
+--   - users: eliminado campo `password` (Supabase Auth lo gestiona)
+--   - users: id sin DEFAULT — viene de auth.users vía Supabase Auth
+--   - eliminada tabla `refresh_tokens` (Supabase Auth la gestiona internamente)
+
 -- CreateEnum
 CREATE TYPE "role_enum" AS ENUM ('OWNER', 'CASHIER', 'WAITER', 'COOK');
 
@@ -7,30 +21,18 @@ CREATE TYPE "sale_status_enum" AS ENUM ('OPEN', 'PAID_CASH', 'PAID_YAPE', 'PAID_
 -- CreateEnum
 CREATE TYPE "payment_source_enum" AS ENUM ('YAPE', 'PLIN', 'AGORA');
 
--- CreateTable
+-- CreateTable: users
+-- El id viene de Supabase Auth (auth.users). Sin password ni refresh tokens.
 CREATE TABLE "users" (
-    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "id" UUID NOT NULL,
     "name" TEXT NOT NULL,
     "username" TEXT NOT NULL,
-    "password" TEXT NOT NULL,
     "role" "role_enum" NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ NOT NULL,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "refresh_tokens" (
-    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
-    "user_id" UUID NOT NULL,
-    "token_hash" VARCHAR(255) NOT NULL,
-    "expires_at" TIMESTAMPTZ NOT NULL,
-    "revoked_at" TIMESTAMPTZ,
-    "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "refresh_tokens_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -181,123 +183,42 @@ CREATE TABLE "daily_production_plans" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
-
--- CreateIndex
 CREATE INDEX "idx_users_role" ON "users"("role");
-
--- CreateIndex
-CREATE UNIQUE INDEX "refresh_tokens_token_hash_key" ON "refresh_tokens"("token_hash");
-
--- CreateIndex
-CREATE INDEX "idx_refresh_tokens_user_id" ON "refresh_tokens"("user_id");
-
--- CreateIndex
 CREATE INDEX "idx_products_is_active" ON "products"("is_active");
-
--- CreateIndex
 CREATE INDEX "idx_products_category" ON "products"("category");
-
--- CreateIndex
 CREATE INDEX "idx_ingredients_stock" ON "ingredients"("stock");
-
--- CreateIndex
-CREATE INDEX "idx_recipes_product_id" ON "recipes"("product_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "uq_recipes_product_ingredient" ON "recipes"("product_id", "ingredient_id");
-
--- CreateIndex
+CREATE INDEX "idx_recipes_product_id" ON "recipes"("product_id");
 CREATE INDEX "idx_sales_status" ON "sales"("status");
-
--- CreateIndex
 CREATE INDEX "idx_sales_table_number" ON "sales"("table_number");
-
--- CreateIndex
 CREATE INDEX "idx_sales_user_id" ON "sales"("user_id");
-
--- CreateIndex
 CREATE INDEX "idx_sales_created_at" ON "sales"("created_at");
-
--- CreateIndex
 CREATE INDEX "idx_sale_items_sale_id" ON "sale_items"("sale_id");
-
--- CreateIndex
 CREATE INDEX "idx_sale_items_product_id" ON "sale_items"("product_id");
-
--- CreateIndex
 CREATE INDEX "idx_expenses_created_at" ON "expenses"("created_at");
-
--- CreateIndex
 CREATE INDEX "idx_expenses_user_id" ON "expenses"("user_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "payment_notifications_notification_id_key" ON "payment_notifications"("notification_id");
-
--- CreateIndex
 CREATE INDEX "idx_payment_notifications_notification_id" ON "payment_notifications"("notification_id");
-
--- CreateIndex
 CREATE INDEX "idx_payment_notifications_is_reviewed" ON "payment_notifications"("is_reviewed");
-
--- CreateIndex
 CREATE INDEX "idx_payment_notifications_created_at" ON "payment_notifications"("created_at");
-
--- CreateIndex
 CREATE UNIQUE INDEX "device_tokens_api_key_hash_key" ON "device_tokens"("api_key_hash");
-
--- CreateIndex
 CREATE INDEX "idx_device_tokens_is_active" ON "device_tokens"("is_active");
-
--- CreateIndex
 CREATE UNIQUE INDEX "uq_reference_baselines_product_day" ON "reference_baselines"("product_id", "day_of_week");
-
--- CreateIndex
 CREATE INDEX "idx_daily_production_plans_date" ON "daily_production_plans"("date");
-
--- CreateIndex
 CREATE UNIQUE INDEX "uq_daily_production_plans_date_product" ON "daily_production_plans"("date", "product_id");
 
 -- AddForeignKey
-ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "recipes" ADD CONSTRAINT "recipes_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "recipes" ADD CONSTRAINT "recipes_ingredient_id_fkey" FOREIGN KEY ("ingredient_id") REFERENCES "ingredients"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "sales" ADD CONSTRAINT "sales_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "sales" ADD CONSTRAINT "sales_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "sales" ADD CONSTRAINT "sales_cancelled_by_fkey" FOREIGN KEY ("cancelled_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "sale_items" ADD CONSTRAINT "sale_items_sale_id_fkey" FOREIGN KEY ("sale_id") REFERENCES "sales"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "sale_items" ADD CONSTRAINT "sale_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "expenses" ADD CONSTRAINT "expenses_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "cash_closes" ADD CONSTRAINT "cash_closes_closed_by_fkey" FOREIGN KEY ("closed_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "cash_closes" ADD CONSTRAINT "cash_closes_parent_close_id_fkey" FOREIGN KEY ("parent_close_id") REFERENCES "cash_closes"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "payment_notifications" ADD CONSTRAINT "payment_notifications_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "device_tokens" ADD CONSTRAINT "device_tokens_registered_by_fkey" FOREIGN KEY ("registered_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "reference_baselines" ADD CONSTRAINT "reference_baselines_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "daily_production_plans" ADD CONSTRAINT "daily_production_plans_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE;

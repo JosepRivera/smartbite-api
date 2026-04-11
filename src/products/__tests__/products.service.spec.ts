@@ -2,6 +2,8 @@ import { ConflictException, NotFoundException, UnprocessableEntityException } fr
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProductsService } from "../products.service";
 
+vi.mock("@/config/env", () => ({ env: {} }));
+
 const mockProduct = {
 	id: "uuid-product-1",
 	name: "Hamburguesa Clásica",

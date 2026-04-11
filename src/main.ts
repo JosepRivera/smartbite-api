@@ -15,7 +15,7 @@ async function bootstrap() {
 	// Seguridad HTTP headers
 	app.use(helmet());
 
-	// CORS — Flutter web en desarrollo, ajustar para producción
+	// CORS — kotlin web en desarrollo, ajustar para producción
 	app.enableCors({
 		origin: env.CORS_ORIGIN ?? true,
 		credentials: true,
