@@ -22,10 +22,10 @@ SmartBite tiene 19 funcionalidades distribuidas en 6 módulos. La columna **Acce
 
 Supabase Auth gestiona toda la identidad: tokens, sesiones y credenciales. NestJS solo valida el JWT emitido por Supabase.
 
-- El dueño se autentica con Google OAuth. La primera cuenta Google que ingresa queda registrada como OWNER — ninguna otra cuenta Google puede acceder después.
+- El dueño se autentica con Google OAuth via el SDK Kotlin. El SDK maneja el flujo completo y entrega tokens directamente desde Supabase. Después del OAuth, Kotlin llama `POST /auth/owner-session` para registrar o verificar el perfil en nuestra BD. La primera cuenta Google que ingresa queda registrada como OWNER — ninguna otra puede acceder después.
 - Los empleados se autentican con usuario y contraseña creados por el dueño. El email en Supabase es sintético: `{username}@smartbite.local`.
 - El access token expira en 15 minutos. El refresh token rota en cada uso.
-- Si el dueño pierde acceso a su Gmail, puede actualizar el email autenticado desde `PATCH /auth/owner-email` mientras tenga una sesión activa.
+- Si el dueño necesita cambiar su Gmail puede hacerlo desde `PATCH /auth/owner-email` mientras tenga sesión activa. Si pierde acceso a su cuenta de Google, la recuperación debe hacerse desde el dashboard de Supabase.
 
 **Decisiones de diseño:**
 - NestJS no firma JWT. Supabase los firma con RS256 y los publica en su JWKS endpoint.

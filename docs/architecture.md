@@ -67,7 +67,7 @@ Los Guards de NestJS validan el JWT y el rol en cada endpoint. El rol viene en e
 
 Supabase Auth es la fuente de verdad para identidad. NestJS no firma tokens ni gestiona contraseñas.
 
-**Dueño:** se autentica con Google OAuth. La primera cuenta Google que ingresa queda registrada como OWNER. Ninguna otra cuenta Google puede acceder después. Si necesita cambiar su Gmail, puede hacerlo desde `PATCH /auth/owner-email` mientras tenga sesión activa.
+**Dueño:** se autentica con Google OAuth via el SDK Kotlin (`supabase.auth.signInWith(Google)`). El SDK maneja el flujo completo y entrega tokens directamente. Después del OAuth, Kotlin llama `POST /auth/owner-session` para registrar o verificar el perfil en nuestra BD. La primera cuenta Google que ingresa queda registrada como OWNER — ninguna otra puede acceder después. Si necesita cambiar su Gmail, puede hacerlo desde `PATCH /auth/owner-email` mientras tenga sesión activa. Si pierde acceso a su cuenta de Google, la recuperación debe hacerse desde el dashboard de Supabase.
 
 **Empleados:** se autentican con usuario y contraseña. El email en Supabase Auth es sintético: `{username}@smartbite.local`. No tienen recuperación de contraseña por email — el dueño resetea sus contraseñas desde el panel de empleados.
 

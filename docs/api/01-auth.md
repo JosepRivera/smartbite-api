@@ -1,6 +1,6 @@
 # Auth · docs/api/01-auth.md
 
-> Autenticación delegada a Supabase Auth. NestJS actúa como proxy thin: no firma tokens ni gestiona contraseñas. El dueño entra con Google OAuth; los empleados con usuario y contraseña.
+> Autenticación delegada a Supabase Auth. NestJS actúa como proxy thin: no firma tokens ni gestiona contraseñas. El dueño entra con Google OAuth via el SDK Kotlin; los empleados con usuario y contraseña.
 
 **Base URL:** `/api/v1/auth`
 
@@ -11,17 +11,16 @@
 - [POST /auth/login](#post-authlogin)
 - [POST /auth/logout](#post-authlogout)
 - [POST /auth/refresh](#post-authrefresh)
+- [POST /auth/owner-session](#post-authowner-session)
 - [POST /auth/forgot-password](#post-authforgot-password)
 - [POST /auth/reset-password](#post-authreset-password)
-- [GET /auth/google](#get-authgoogle)
-- [GET /auth/callback](#get-authcallback)
 - [PATCH /auth/owner-email](#patch-authowner-email)
 
 ---
 
 ## POST /auth/login
 
-Login con usuario y contraseña. Exclusivo para empleados (y el dueño si tiene cuenta con contraseña). El dueño usualmente entra con Google OAuth.
+Login con usuario y contraseña. Exclusivo para empleados. El dueño se autentica con Google OAuth via el SDK Kotlin — no usa este endpoint.
 
 **Autenticación:** No requerida
 
@@ -94,6 +93,8 @@ Sin cuerpo de respuesta.
 
 Renueva el access token con el refresh token. Supabase rota el refresh token en cada uso — el token anterior queda invalidado.
 
+> El SDK Kotlin maneja el refresh automáticamente. Este endpoint existe para casos donde se prefiera gestionar tokens manualmente.
+
 **Autenticación:** No requerida
 
 ### Request body
@@ -126,11 +127,54 @@ Renueva el access token con el refresh token. Supabase rota el refresh token en 
 
 ---
 
+## POST /auth/owner-session
+
+Registra o verifica el perfil del dueño después del Google OAuth nativo del SDK Kotlin.
+
+**Flujo en Kotlin:**
+1. El SDK autentica con Google: `supabase.auth.signInWith(Google)`
+2. El SDK obtiene `access_token` + `refresh_token` directamente desde Supabase
+3. Kotlin llama este endpoint con el `access_token` en el header
+4. El backend crea el perfil OWNER si es la primera vez, o lo devuelve si ya existe
+
+**Primera vez:** crea el perfil OWNER en la tabla `users`.  
+**Siguientes veces:** devuelve el perfil existente.  
+**Si ya hay un OWNER con distinto ID:** retorna 401.
+
+**Autenticación:** Bearer token requerido
+
+```
+POST /api/v1/auth/owner-session
+Authorization: Bearer <access_token>
+```
+
+### Respuesta exitosa · `200 OK`
+
+```json
+{
+  "id": "uuid-del-dueno",
+  "name": "Carlos Ríos",
+  "username": "carlos.rios",
+  "role": "OWNER",
+  "isActive": true
+}
+```
+
+### Errores
+
+| Status | Causa |
+| ------ | ----- |
+| 401 | Token inválido o la cuenta Google no es la del dueño registrado |
+
+---
+
 ## POST /auth/forgot-password
 
-Solicita recuperación de contraseña. Supabase envía un email con el link de recuperación.
+Solicita recuperación de contraseña vía email.
 
-**Solo funciona para el dueño** (tiene Gmail real). Los empleados usan emails sintéticos `@smartbite.local` — si olvidan su contraseña, el dueño la resetea desde `PATCH /users/:id/password`.
+**Solo aplica al dueño** si en algún momento configuró una contraseña en Supabase Auth (flujo de email/password). **No aplica para recuperar acceso a Gmail** — si el dueño perdió acceso a su cuenta de Google, ver [Recuperación de acceso](#recuperación-de-acceso-del-dueño).
+
+Los empleados usan emails sintéticos `@smartbite.local` — no tienen recuperación por email. El dueño resetea sus contraseñas desde `PATCH /users/:id/password`.
 
 **Autenticación:** No requerida
 
@@ -140,7 +184,7 @@ Solicita recuperación de contraseña. Supabase envía un email con el link de r
 
 | Campo | Tipo | Requerido | Descripción |
 | ----- | ---- | --------- | ----------- |
-| `email` | string | ✅ | Email del dueño (su Gmail) |
+| `email` | string | ✅ | Email del dueño |
 
 ```json
 {
@@ -193,72 +237,6 @@ Actualiza la contraseña del usuario autenticado. El usuario debe enviar el JWT 
 
 ---
 
-## GET /auth/google
-
-Genera la URL de OAuth de Google. El cliente Kotlin abre esta URL en un WebView o navegador.
-
-**Autenticación:** No requerida
-
-**Prerequisito:** Google OAuth configurado en el dashboard de Supabase (Authentication → Providers → Google).
-
-### Query parameters
-
-| Parámetro | Tipo | Requerido | Descripción |
-| --------- | ---- | --------- | ----------- |
-| `redirect_to` | string | No | URL de callback después del OAuth. Debe estar en la lista de URLs permitidas en Supabase. |
-
-```
-GET /api/v1/auth/google?redirect_to=https://mi-app.com/auth/callback
-```
-
-### Respuesta exitosa · `200 OK`
-
-```json
-{
-  "url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=...&scope=..."
-}
-```
-
-> El cliente abre esta URL. Google redirige a Supabase, Supabase redirige a `/auth/callback` con un `code`.
-
----
-
-## GET /auth/callback
-
-Intercambia el código OAuth (PKCE) por tokens de sesión. Supabase redirige aquí después del login con Google.
-
-Si es la primera vez que esta cuenta Google entra, se crea automáticamente el perfil OWNER en la tabla `users`. Si ya existe un OWNER con distinto email, el acceso es rechazado.
-
-**Autenticación:** No requerida
-
-### Query parameters
-
-| Parámetro | Tipo | Requerido | Descripción |
-| --------- | ---- | --------- | ----------- |
-| `code` | string | ✅ | Código OAuth recibido de Supabase en el callback |
-
-```
-GET /api/v1/auth/callback?code=abc123...
-```
-
-### Respuesta exitosa · `200 OK`
-
-```json
-{
-  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refresh_token": "v1.AKd9...",
-  "expires_in": 900
-}
-```
-
-### Errores
-
-| Status | Causa |
-| ------ | ----- |
-| 401 | Código OAuth inválido, expirado, o la cuenta Google no es la del dueño registrado |
-
----
-
 ## PATCH /auth/owner-email
 
 Actualiza el email de Google del dueño en Supabase Auth. Solo funciona mientras el dueño tiene una sesión activa con su Gmail actual.
@@ -293,4 +271,18 @@ Actualiza el email de Google del dueño en Supabase Auth. Solo funciona mientras
 | 401 | Token ausente o inválido |
 | 403 | El usuario autenticado no es OWNER |
 
-> Si el dueño ya perdió acceso al Gmail anterior, la actualización debe hacerse manualmente desde el dashboard de Supabase.
+---
+
+## Recuperación de acceso del dueño
+
+Si el dueño **pierde acceso a su cuenta de Google** (contraseña olvidada del Gmail, cuenta suspendida, etc.), ningún endpoint de la API puede ayudarlo — todos requieren un JWT válido emitido por Supabase Auth.
+
+**Pasos para recuperar el acceso:**
+
+1. Recuperar acceso a la cuenta de Google directamente desde Google (contraseña olvidada, número de teléfono de recuperación, etc.)
+2. Si la cuenta de Google fue eliminada o es irrecuperable, contactar al administrador de Supabase para:
+   - Acceder al dashboard de Supabase → Authentication → Users
+   - Localizar al usuario OWNER por su email o UUID
+   - Actualizar el email o vincular una nueva cuenta de Google manualmente
+
+> Esta operación requiere acceso al dashboard de Supabase del proyecto. El dueño debe tener guardadas las credenciales de acceso al proyecto de Supabase como parte de la gestión del negocio.
