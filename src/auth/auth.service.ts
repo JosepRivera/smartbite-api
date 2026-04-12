@@ -36,6 +36,7 @@ export class AuthService {
 		});
 
 		if (error || !data.session) {
+			console.error("[auth:login] Supabase error:", error);
 			throw new UnauthorizedException("Credenciales inválidas");
 		}
 
@@ -183,6 +184,12 @@ export class AuthService {
 				},
 			});
 		}
+
+		// Asegurar que app_metadata.role esté seteado — requerido por RolesGuard.
+		// El JWT de Supabase no incluye roles de nuestra BD, solo de app_metadata.
+		await this.supabase.admin.auth.admin.updateUserById(userId, {
+			app_metadata: { role: "OWNER" },
+		});
 
 		return {
 			id: user.id,

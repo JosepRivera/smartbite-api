@@ -6,11 +6,16 @@ import { JwtGuard } from "@/common/guards/jwt.guard";
 import { RolesGuard } from "@/common/guards/roles.guard";
 // biome-ignore lint/style/useImportType: required for NestJS DI
 import { AuthService } from "./auth.service";
-import type { ForgotPasswordDtoClass } from "./dto/forgot-password.dto";
-import type { LoginDtoClass } from "./dto/login.dto";
-import type { RefreshDtoClass } from "./dto/refresh.dto";
-import type { ResetPasswordDtoClass } from "./dto/reset-password.dto";
-import type { UpdateOwnerEmailDtoClass } from "./dto/update-owner-email.dto";
+// biome-ignore lint/style/useImportType: required for nestjs-zod ZodValidationPipe runtime metatype
+import { ForgotPasswordDtoClass } from "./dto/forgot-password.dto";
+// biome-ignore lint/style/useImportType: required for nestjs-zod ZodValidationPipe runtime metatype
+import { LoginDtoClass } from "./dto/login.dto";
+// biome-ignore lint/style/useImportType: required for nestjs-zod ZodValidationPipe runtime metatype
+import { RefreshDtoClass } from "./dto/refresh.dto";
+// biome-ignore lint/style/useImportType: required for nestjs-zod ZodValidationPipe runtime metatype
+import { ResetPasswordDtoClass } from "./dto/reset-password.dto";
+// biome-ignore lint/style/useImportType: required for nestjs-zod ZodValidationPipe runtime metatype
+import { UpdateOwnerEmailDtoClass } from "./dto/update-owner-email.dto";
 
 @ApiTags("auth")
 @Controller("auth")
@@ -102,7 +107,10 @@ export class AuthController {
 			"Si ya hay un OWNER con distinto ID, retorna 401.",
 	})
 	@ApiResponse({ status: 200, description: "Perfil OWNER registrado o verificado correctamente." })
-	@ApiResponse({ status: 401, description: "Token inválido o la cuenta Google no es la del dueño registrado." })
+	@ApiResponse({
+		status: 401,
+		description: "Token inválido o la cuenta Google no es la del dueño registrado.",
+	})
 	ownerSession(@CurrentUser() user: { sub: string }) {
 		return this.authService.registerOwnerSession(user.sub);
 	}

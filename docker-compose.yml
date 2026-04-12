@@ -1,14 +1,13 @@
-# ─── Entorno CLOUD / STAGING — Supabase como BD ──────────────────────────────
+# ─── Entorno de DESARROLLO — Supabase como BD y Auth ─────────────────────────
 #
-# BD:  Supabase PostgreSQL (DATABASE_URL y DIRECT_URL apuntan a Supabase).
+# BD:   Supabase PostgreSQL (DATABASE_URL y DIRECT_URL apuntan a Supabase).
 # Auth: Supabase Auth cloud.
 #
 # Setup inicial (solo una vez por proyecto Supabase):
 #   1. Ejecutar prisma/supabase-setup.sql en el SQL Editor de Supabase
 #   2. pnpm db:baseline
 #
-# Para DESARROLLO local con PostgreSQL, usar docker-compose.dev.yml:
-#   pnpm dev   →   docker compose -f docker-compose.dev.yml up
+# Levantar:  docker compose up
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:

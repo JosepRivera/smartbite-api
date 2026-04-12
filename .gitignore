@@ -61,3 +61,4 @@ src/generated/prisma
 skills-lock.json
 .claude
 CLAUDE.md
+.mcp.json

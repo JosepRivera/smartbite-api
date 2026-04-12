@@ -30,7 +30,7 @@ async function bootstrap() {
 	// Swagger / OpenAPI
 	const config = new DocumentBuilder()
 		.setTitle("SmartBite API")
-		.setDescription("Backend del sistema de gestión inteligente para restaurantes — Tecsup 2026-1")
+		.setDescription("Backend del sistema de gestión inteligente para restaurantes")
 		.setVersion("1.0")
 		.addServer(`http://localhost:${env.PORT}`, "Development")
 		.addBearerAuth({ type: "http", scheme: "bearer", bearerFormat: "JWT" }, "access-token")

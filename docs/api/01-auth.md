@@ -2,12 +2,13 @@
 
 > Autenticación delegada a Supabase Auth. NestJS actúa como proxy thin: no firma tokens ni gestiona contraseñas. El dueño entra con Google OAuth via el SDK Kotlin; los empleados con usuario y contraseña.
 
-**Base URL:** `/api/v1/auth`
+**Base URL:** `http://localhost:3000/api/v1/auth`
 
 ---
 
 ## Índice
 
+- [Formato de respuestas](#formato-de-respuestas)
 - [POST /auth/login](#post-authlogin)
 - [POST /auth/logout](#post-authlogout)
 - [POST /auth/refresh](#post-authrefresh)
@@ -15,6 +16,47 @@
 - [POST /auth/forgot-password](#post-authforgot-password)
 - [POST /auth/reset-password](#post-authreset-password)
 - [PATCH /auth/owner-email](#patch-authowner-email)
+- [Recuperación de acceso del dueño](#recuperación-de-acceso-del-dueño)
+
+---
+
+## Formato de respuestas
+
+### Éxito
+
+Todas las respuestas exitosas (excepto `204 No Content`) vienen envueltas en un objeto `data`:
+
+```json
+{
+  "data": { ... }
+}
+```
+
+### Error de autenticación / negocio
+
+```json
+{
+  "message": "Credenciales inválidas",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+### Error de validación · `400 Bad Request`
+
+```json
+{
+  "statusCode": 400,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "code": "invalid_type",
+      "path": ["username"],
+      "message": "Invalid input: expected string, received undefined"
+    }
+  ]
+}
+```
 
 ---
 
@@ -26,10 +68,10 @@ Login con usuario y contraseña. Exclusivo para empleados. El dueño se autentic
 
 ### Request body
 
-| Campo | Tipo | Requerido | Descripción |
-| ----- | ---- | --------- | ----------- |
-| `username` | string | ✅ | Nombre de usuario |
-| `password` | string | ✅ | Contraseña |
+| Campo | Tipo | Requerido | Validación | Descripción |
+| ----- | ---- | --------- | ---------- | ----------- |
+| `username` | string | ✅ | mín. 1 · máx. 50 | Nombre de usuario |
+| `password` | string | ✅ | mín. 1 · máx. 128 | Contraseña |
 
 ```json
 {
@@ -42,15 +84,17 @@ Login con usuario y contraseña. Exclusivo para empleados. El dueño se autentic
 
 ```json
 {
-  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refresh_token": "v1.AKd9...",
-  "expires_in": 900,
-  "user": {
-    "id": "uuid-del-usuario",
-    "name": "Juan García",
-    "username": "juan",
-    "role": "CASHIER",
-    "isActive": true
+  "data": {
+    "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refresh_token": "v1.AKd9...",
+    "expires_in": 900,
+    "user": {
+      "id": "uuid-del-usuario",
+      "name": "Juan García",
+      "username": "juan",
+      "role": "CASHIER",
+      "isActive": true
+    }
   }
 }
 ```
@@ -61,6 +105,7 @@ Login con usuario y contraseña. Exclusivo para empleados. El dueño se autentic
 
 | Status | Causa |
 | ------ | ----- |
+| 400 | Validación fallida (campos vacíos o exceden límite) |
 | 401 | Credenciales inválidas o cuenta desactivada |
 | 404 | Perfil de usuario no encontrado en la BD |
 
@@ -93,7 +138,7 @@ Sin cuerpo de respuesta.
 
 Renueva el access token con el refresh token. Supabase rota el refresh token en cada uso — el token anterior queda invalidado.
 
-> El SDK Kotlin maneja el refresh automáticamente. Este endpoint existe para casos donde se prefiera gestionar tokens manualmente.
+> El SDK Kotlin maneja el refresh automáticamente. Este endpoint existe para casos donde se prefiera gestionar tokens manualmente (ej: frontend Next.js).
 
 **Autenticación:** No requerida
 
@@ -113,9 +158,11 @@ Renueva el access token con el refresh token. Supabase rota el refresh token en 
 
 ```json
 {
-  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refresh_token": "v1.BXe0...",
-  "expires_in": 900
+  "data": {
+    "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refresh_token": "v1.BXe0...",
+    "expires_in": 900
+  }
 }
 ```
 
@@ -123,6 +170,7 @@ Renueva el access token con el refresh token. Supabase rota el refresh token en 
 
 | Status | Causa |
 | ------ | ----- |
+| 400 | Campo `refresh_token` vacío |
 | 401 | Refresh token inválido o expirado |
 
 ---
@@ -152,11 +200,13 @@ Authorization: Bearer <access_token>
 
 ```json
 {
-  "id": "uuid-del-dueno",
-  "name": "Carlos Ríos",
-  "username": "carlos.rios",
-  "role": "OWNER",
-  "isActive": true
+  "data": {
+    "id": "uuid-del-dueno",
+    "name": "Carlos Ríos",
+    "username": "carlos.rios",
+    "role": "OWNER",
+    "isActive": true
+  }
 }
 ```
 
@@ -172,9 +222,7 @@ Authorization: Bearer <access_token>
 
 Solicita recuperación de contraseña vía email.
 
-**Solo aplica al dueño** si en algún momento configuró una contraseña en Supabase Auth (flujo de email/password). **No aplica para recuperar acceso a Gmail** — si el dueño perdió acceso a su cuenta de Google, ver [Recuperación de acceso](#recuperación-de-acceso-del-dueño).
-
-Los empleados usan emails sintéticos `@smartbite.local` — no tienen recuperación por email. El dueño resetea sus contraseñas desde `PATCH /users/:id/password`.
+**Solo aplica al dueño** si en algún momento configuró una contraseña en Supabase Auth (flujo de email/password). Los empleados usan emails sintéticos `@smartbite.local` — no tienen recuperación por email. Sus contraseñas las resetea el dueño desde `PATCH /users/:id/password`.
 
 **Autenticación:** No requerida
 
@@ -182,9 +230,9 @@ Los empleados usan emails sintéticos `@smartbite.local` — no tienen recuperac
 
 ### Request body
 
-| Campo | Tipo | Requerido | Descripción |
-| ----- | ---- | --------- | ----------- |
-| `email` | string | ✅ | Email del dueño |
+| Campo | Tipo | Requerido | Validación | Descripción |
+| ----- | ---- | --------- | ---------- | ----------- |
+| `email` | string | ✅ | formato email válido | Email del dueño |
 
 ```json
 {
@@ -196,9 +244,17 @@ Los empleados usan emails sintéticos `@smartbite.local` — no tienen recuperac
 
 ```json
 {
-  "message": "Si el email existe, recibirás las instrucciones de recuperación."
+  "data": {
+    "message": "Si el email existe, recibirás las instrucciones de recuperación."
+  }
 }
 ```
+
+### Errores
+
+| Status | Causa |
+| ------ | ----- |
+| 400 | Formato de email inválido |
 
 ---
 
@@ -208,11 +264,16 @@ Actualiza la contraseña del usuario autenticado. El usuario debe enviar el JWT 
 
 **Autenticación:** Bearer token requerido (JWT de recovery de Supabase)
 
+```
+POST /api/v1/auth/reset-password
+Authorization: Bearer <recovery_jwt>
+```
+
 ### Request body
 
 | Campo | Tipo | Requerido | Validación | Descripción |
 | ----- | ---- | --------- | ---------- | ----------- |
-| `password` | string | ✅ | mín. 8 caracteres | Nueva contraseña |
+| `password` | string | ✅ | mín. 6 · máx. 128 | Nueva contraseña |
 
 ```json
 {
@@ -224,7 +285,9 @@ Actualiza la contraseña del usuario autenticado. El usuario debe enviar el JWT 
 
 ```json
 {
-  "message": "Contraseña actualizada correctamente."
+  "data": {
+    "message": "Contraseña actualizada correctamente."
+  }
 }
 ```
 
@@ -232,6 +295,7 @@ Actualiza la contraseña del usuario autenticado. El usuario debe enviar el JWT 
 
 | Status | Causa |
 | ------ | ----- |
+| 400 | Contraseña no cumple el mínimo de 6 caracteres |
 | 401 | Token de recovery inválido o expirado |
 | 500 | Error interno al actualizar en Supabase |
 
@@ -243,15 +307,20 @@ Actualiza el email de Google del dueño en Supabase Auth. Solo funciona mientras
 
 **Autenticación:** Bearer token requerido · Solo OWNER
 
+```
+PATCH /api/v1/auth/owner-email
+Authorization: Bearer <access_token>
+```
+
 ### Request body
 
-| Campo | Tipo | Requerido | Descripción |
-| ----- | ---- | --------- | ----------- |
-| `new_email` | string | ✅ | Nuevo Gmail del dueño |
+| Campo | Tipo | Requerido | Validación | Descripción |
+| ----- | ---- | --------- | ---------- | ----------- |
+| `email` | string | ✅ | formato email válido | Nuevo Gmail del dueño |
 
 ```json
 {
-  "new_email": "nuevogmail@gmail.com"
+  "email": "nuevogmail@gmail.com"
 }
 ```
 
@@ -259,7 +328,9 @@ Actualiza el email de Google del dueño en Supabase Auth. Solo funciona mientras
 
 ```json
 {
-  "message": "Email actualizado. Usá el nuevo Gmail para iniciar sesión."
+  "data": {
+    "message": "Email actualizado. Usá el nuevo Gmail para iniciar sesión."
+  }
 }
 ```
 
@@ -267,9 +338,10 @@ Actualiza el email de Google del dueño en Supabase Auth. Solo funciona mientras
 
 | Status | Causa |
 | ------ | ----- |
-| 400 | Email inválido |
+| 400 | Formato de email inválido |
 | 401 | Token ausente o inválido |
 | 403 | El usuario autenticado no es OWNER |
+| 500 | Error al actualizar en Supabase |
 
 ---
 
