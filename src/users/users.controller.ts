@@ -17,8 +17,10 @@ import { JwtGuard } from "@/common/guards/jwt.guard";
 import { RolesGuard } from "@/common/guards/roles.guard";
 // biome-ignore lint/style/useImportType: required for NestJS DI
 import { Role } from "@/prisma/prisma.service";
-import type { CreateUserDto } from "./dto/create-user.dto";
-import type { UpdateUserDto } from "./dto/update-user.dto";
+// biome-ignore lint/style/useImportType: required for nestjs-zod ZodValidationPipe runtime metatype
+import { CreateUserDto } from "./dto/create-user.dto";
+// biome-ignore lint/style/useImportType: required for nestjs-zod ZodValidationPipe runtime metatype
+import { UpdateUserDto } from "./dto/update-user.dto";
 // biome-ignore lint/style/useImportType: required for NestJS DI
 import { UsersService } from "./users.service";
 

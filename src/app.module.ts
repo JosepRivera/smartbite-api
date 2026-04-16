@@ -6,6 +6,7 @@ import { IngredientsModule } from "./ingredients/ingredients.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { ProductsModule } from "./products/products.module";
 import { RecipesModule } from "./recipes/recipes.module";
+import { SalesModule } from "./sales/sales.module";
 import { SupabaseModule } from "./supabase/supabase.module";
 import { UsersModule } from "./users/users.module";
 
@@ -22,6 +23,7 @@ import { UsersModule } from "./users/users.module";
 		ProductsModule,
 		IngredientsModule,
 		RecipesModule,
+		SalesModule,
 	],
 })
 export class AppModule {}

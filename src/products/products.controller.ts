@@ -16,8 +16,10 @@ import { Roles } from "@/common/decorators/roles.decorator";
 import { JwtGuard } from "@/common/guards/jwt.guard";
 import { RolesGuard } from "@/common/guards/roles.guard";
 import { Role } from "@/prisma/prisma.service";
-import type { CreateProductDto } from "./dto/create-product.dto";
-import type { UpdateProductDto } from "./dto/update-product.dto";
+// biome-ignore lint/style/useImportType: required for nestjs-zod ZodValidationPipe runtime metatype
+import { CreateProductDto } from "./dto/create-product.dto";
+// biome-ignore lint/style/useImportType: required for nestjs-zod ZodValidationPipe runtime metatype
+import { UpdateProductDto } from "./dto/update-product.dto";
 // biome-ignore lint/style/useImportType: required for NestJS DI
 import { ProductsService } from "./products.service";
 

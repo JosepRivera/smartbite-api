@@ -4,7 +4,8 @@ import { Roles } from "@/common/decorators/roles.decorator";
 import { JwtGuard } from "@/common/guards/jwt.guard";
 import { RolesGuard } from "@/common/guards/roles.guard";
 import { Role } from "@/prisma/prisma.service";
-import type { UpsertRecipeDto } from "./dto/upsert-recipe.dto";
+// biome-ignore lint/style/useImportType: required for nestjs-zod ZodValidationPipe runtime metatype
+import { UpsertRecipeDto } from "./dto/upsert-recipe.dto";
 // biome-ignore lint/style/useImportType: required for NestJS DI
 import { RecipesService } from "./recipes.service";
 
@@ -16,6 +17,7 @@ export class RecipesController {
 	constructor(private readonly recipesService: RecipesService) {}
 
 	@Get(":productId")
+	@Roles(Role.OWNER)
 	@ApiOperation({
 		summary: "Obtener receta",
 		description: "Devuelve la receta completa de un producto con sus insumos y cantidades.",

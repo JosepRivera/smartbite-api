@@ -12,6 +12,6 @@
 		"incremental": false,
 		"noUncheckedSideEffectImports": false
 	},
-	"include": ["src/**/*", "test/**/*", "prisma/seed.ts"],
+	"include": ["src/**/*", "test/**/*"],
 	"exclude": ["node_modules", "dist"]
 }

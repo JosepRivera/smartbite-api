@@ -3,7 +3,8 @@
 > Gestión de empleados y roles. Solo el dueño puede crear y administrar cuentas — no existe registro público. La autenticación de cada usuario la gestiona Supabase Auth.
 
 **Base URL:** `/api/v1/users`  
-**Autenticación:** Bearer token requerido en todos los endpoints.
+**Autenticación:** Bearer token requerido en todos los endpoints.  
+**Formato de respuestas:** ver `01-auth.md#formato-de-respuestas` — éxito en `data: {}`, validación en `errors: []`.
 
 ---
 
@@ -31,26 +32,28 @@ Authorization: Bearer <token>
 ### Respuesta exitosa · `200 OK`
 
 ```json
-[
-  {
-    "id": "uuid-juan",
-    "name": "Juan García",
-    "username": "juan",
-    "role": "CASHIER",
-    "isActive": true,
-    "createdAt": "2026-01-15T10:00:00Z",
-    "updatedAt": "2026-01-15T10:00:00Z"
-  },
-  {
-    "id": "uuid-maria",
-    "name": "María López",
-    "username": "maria",
-    "role": "WAITER",
-    "isActive": false,
-    "createdAt": "2026-01-10T08:00:00Z",
-    "updatedAt": "2026-03-01T14:00:00Z"
-  }
-]
+{
+  "data": [
+    {
+      "id": "uuid-juan",
+      "name": "Juan García",
+      "username": "juan",
+      "role": "CASHIER",
+      "isActive": true,
+      "createdAt": "2026-01-15T10:00:00Z",
+      "updatedAt": "2026-01-15T10:00:00Z"
+    },
+    {
+      "id": "uuid-maria",
+      "name": "María López",
+      "username": "maria",
+      "role": "WAITER",
+      "isActive": false,
+      "createdAt": "2026-01-10T08:00:00Z",
+      "updatedAt": "2026-03-01T14:00:00Z"
+    }
+  ]
+}
 ```
 
 ### Errores
@@ -74,7 +77,7 @@ Crea una cuenta de empleado. Crea el usuario en Supabase Auth (con email sintét
 | ----- | ---- | --------- | ---------- | ----------- |
 | `name` | string | ✅ | mín. 1 | Nombre completo del empleado |
 | `username` | string | ✅ | mín. 3, sin espacios | Nombre de usuario para iniciar sesión |
-| `password` | string | ✅ | mín. 8 | Contraseña inicial |
+| `password` | string | ✅ | mín. 6 · máx. 128 | Contraseña inicial |
 | `role` | string | ✅ | `CASHIER`, `WAITER`, `COOK` | Rol asignado |
 
 ```json
@@ -90,13 +93,15 @@ Crea una cuenta de empleado. Crea el usuario en Supabase Auth (con email sintét
 
 ```json
 {
-  "id": "uuid-generado-por-supabase",
-  "name": "Juan García",
-  "username": "juan",
-  "role": "CASHIER",
-  "isActive": true,
-  "createdAt": "2026-04-10T10:00:00Z",
-  "updatedAt": "2026-04-10T10:00:00Z"
+  "data": {
+    "id": "uuid-generado-por-supabase",
+    "name": "Juan García",
+    "username": "juan",
+    "role": "CASHIER",
+    "isActive": true,
+    "createdAt": "2026-04-10T10:00:00Z",
+    "updatedAt": "2026-04-10T10:00:00Z"
+  }
 }
 ```
 
@@ -133,13 +138,15 @@ Authorization: Bearer <token>
 
 ```json
 {
-  "id": "uuid-juan",
-  "name": "Juan García",
-  "username": "juan",
-  "role": "CASHIER",
-  "isActive": true,
-  "createdAt": "2026-01-15T10:00:00Z",
-  "updatedAt": "2026-01-15T10:00:00Z"
+  "data": {
+    "id": "uuid-juan",
+    "name": "Juan García",
+    "username": "juan",
+    "role": "CASHIER",
+    "isActive": true,
+    "createdAt": "2026-01-15T10:00:00Z",
+    "updatedAt": "2026-01-15T10:00:00Z"
+  }
 }
 ```
 
@@ -178,7 +185,7 @@ Actualiza un empleado. El comportamiento depende del rol del solicitante:
 | `username` | string | ✅ | Nombre de usuario (debe ser único) |
 | `role` | string | ✅ | `CASHIER`, `WAITER`, `COOK` |
 | `is_active` | boolean | ✅ | `false` desactiva la cuenta (soft delete) |
-| `password` | string | No | Nueva contraseña (mín. 8 caracteres) |
+| `password` | string | No | Nueva contraseña (mín. 6 caracteres) |
 
 **Ejemplo — OWNER resetea contraseña de empleado:**
 ```json
@@ -204,26 +211,29 @@ Actualiza un empleado. El comportamiento depende del rol del solicitante:
 
 ```json
 {
-  "id": "uuid-juan",
-  "name": "Juan García",
-  "username": "juan",
-  "role": "WAITER",
-  "isActive": true,
-  "createdAt": "2026-01-15T10:00:00Z",
-  "updatedAt": "2026-04-10T12:30:00Z"
+  "data": {
+    "id": "uuid-juan",
+    "name": "Juan García",
+    "username": "juan",
+    "role": "WAITER",
+    "isActive": true,
+    "createdAt": "2026-01-15T10:00:00Z",
+    "updatedAt": "2026-04-10T12:30:00Z"
+  }
 }
 ```
 
 ### Errores
 
-| Status | Causa |
-| ------ | ----- |
-| 400 | UUID mal formado o validación fallida |
-| 401 | Token ausente o inválido |
-| 403 | Intento de editar perfil ajeno, o empleado intentando cambiar campos distintos a `password` |
-| 404 | Usuario no encontrado |
-| 409 | El nuevo username ya está en uso |
-| 500 | Error al actualizar en Supabase Auth |
+| Status | Mensaje | Causa |
+| ------ | ------- | ----- |
+| 400 | Validation failed | UUID mal formado o validación de campo fallida |
+| 401 | Token ausente o inválido | Sin Bearer token o token expirado |
+| 403 | No tienes permiso para esta acción | Empleado intentando editar perfil de otro usuario |
+| 403 | Solo puedes cambiar tu contraseña | Empleado enviando `name`, `username`, `role` o `is_active` |
+| 404 | Usuario no encontrado | UUID no existe en BD |
+| 409 | El username ya está en uso | Nuevo username ya tomado |
+| 500 | Error actualizando contraseña | Fallo en Supabase Auth |
 
 ---
 
@@ -250,13 +260,15 @@ Authorization: Bearer <token>
 
 ```json
 {
-  "id": "uuid-juan",
-  "name": "Juan García",
-  "username": "juan",
-  "role": "CASHIER",
-  "isActive": false,
-  "createdAt": "2026-01-15T10:00:00Z",
-  "updatedAt": "2026-04-10T15:00:00Z"
+  "data": {
+    "id": "uuid-juan",
+    "name": "Juan García",
+    "username": "juan",
+    "role": "CASHIER",
+    "isActive": false,
+    "createdAt": "2026-01-15T10:00:00Z",
+    "updatedAt": "2026-04-10T15:00:00Z"
+  }
 }
 ```
 

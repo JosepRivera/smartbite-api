@@ -55,6 +55,9 @@ export class UsersService {
 		});
 
 		if (error || !data.user) {
+			if (error?.message?.includes("already been registered")) {
+				throw new ConflictException("El username ya está en uso");
+			}
 			throw new InternalServerErrorException(
 				`Error creando usuario en Supabase: ${error?.message}`,
 			);

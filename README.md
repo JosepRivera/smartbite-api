@@ -37,8 +37,8 @@ La autenticación es gestionada por **Supabase Auth**: todos los usuarios (dueñ
 | AUTH-2 | Gestión de empleados y roles | ✅ |
 | OPS-1  | Productos y precios | ✅ |
 | OPS-2  | Insumos y stock | ✅ |
-| OPS-3  | Recetas por producto | 🔧 |
-| OPS-4  | Registro de ventas con cobro | ⏳ |
+| OPS-3  | Recetas por producto | ✅ |
+| OPS-4  | Registro de ventas con cobro | ✅ |
 | OPS-5  | Gastos y compras | ⏳ |
 | OPS-6  | Historial y corrección de ventas | ⏳ |
 | OPS-7  | Alertas de stock bajo | ⏳ |
@@ -59,7 +59,7 @@ La autenticación es gestionada por **Supabase Auth**: todos los usuarios (dueñ
 
 ## Setup
 
-**Requisitos:** Docker, Docker Compose, pnpm y un proyecto en [supabase.com](https://supabase.com).
+**Requisitos:** Docker, Docker Compose, pnpm y [Supabase CLI](https://supabase.com/docs/guides/cli/getting-started).
 
 ```bash
 git clone https://github.com/tu-usuario/smartbite-api.git
@@ -68,18 +68,21 @@ pnpm install
 cp .env.example .env
 ```
 
-Completar en el `.env`: `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` (Settings → API en el dashboard de Supabase). El resto ya tiene valores por defecto para desarrollo local.
+El `.env` ya tiene valores por defecto para Supabase CLI local — no hace falta editarlo para desarrollo.
 
 ### Desarrollo
 
 ```bash
-pnpm dev
+pnpm supabase:start   # Inicia BD + Auth local (Supabase CLI)
+pnpm dev              # Aplica migrations + SQL + inicia la API en modo watch
+pnpm db:seed          # Solo la primera vez — crea el OWNER inicial
 ```
-
-Levanta PostgreSQL local + API en modo watch. Al iniciar aplica migraciones, vistas e índices automáticamente.
 
 - API: `http://localhost:3000`
 - Swagger: `http://localhost:3000/api/docs`
+- Base de datos (UI): `http://localhost:54323` (Supabase Studio)
+
+Credenciales del OWNER de prueba: `username: owner` / `password: owner1234`
 
 ### Tests
 
@@ -100,20 +103,23 @@ docker compose up   # Inicia la API contra Supabase cloud
 
 ## Comandos
 
-| Comando               | Descripción                                                           |
-| --------------------- | --------------------------------------------------------------------- |
-| `pnpm dev`            | Inicia la API en Docker en modo watch (BD: Supabase cloud)            |
-| `pnpm stop`           | Detiene los contenedores                                              |
-| `pnpm dev:clean`      | Detiene contenedores y limpia volúmenes Docker                        |
-| `pnpm db:migrate`     | Crea y aplica una nueva migración (dev)                               |
-| `pnpm db:deploy`      | Aplica migraciones pendientes (producción/staging)                    |
-| `pnpm db:baseline`    | Registra el baseline en Supabase cloud (solo primera vez)             |
-| `pnpm db:generate`    | Regenera el cliente Prisma                                            |
-| `pnpm db:seed`        | Carga datos sintéticos de prueba                                      |
-| `pnpm test`           | Tests unitarios con Vitest                                            |
-| `pnpm test:e2e`       | Tests de integración en Docker (limpia automáticamente al terminar)   |
-| `pnpm lint`           | Lint y auto-fix con Biome                                             |
-| `pnpm build`          | Compila TypeScript a `dist/`                                          |
+| Comando                  | Descripción                                                           |
+| ------------------------ | --------------------------------------------------------------------- |
+| `pnpm supabase:start`    | Inicia BD + Auth local con Supabase CLI                               |
+| `pnpm supabase:stop`     | Detiene Supabase CLI                                                  |
+| `pnpm supabase:status`   | Muestra URLs y credenciales del Supabase local                        |
+| `pnpm dev`               | Aplica migrations + SQL + inicia la API en modo watch (Docker)        |
+| `pnpm stop`              | Detiene los contenedores de la API                                    |
+| `pnpm dev:clean`         | Detiene contenedores y limpia volúmenes Docker                        |
+| `pnpm db:migrate`        | Crea y aplica una nueva migración (dev)                               |
+| `pnpm db:deploy`         | Aplica migraciones pendientes (producción/staging)                    |
+| `pnpm db:baseline`       | Registra el baseline en Supabase cloud (solo primera vez)             |
+| `pnpm db:generate`       | Regenera el cliente Prisma                                            |
+| `pnpm db:seed`           | Crea el OWNER inicial (requiere Supabase CLI corriendo)               |
+| `pnpm test`              | Tests unitarios con Vitest                                            |
+| `pnpm test:e2e`          | Tests de integración en Docker (limpia automáticamente al terminar)   |
+| `pnpm lint`              | Lint y auto-fix con Biome                                             |
+| `pnpm build`             | Compila TypeScript a `dist/`                                          |
 
 ---
 

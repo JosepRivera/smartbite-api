@@ -1,6 +1,10 @@
 # Gestión operativa · docs/api/02-ops.md
 
-> Operaciones diarias del negocio: productos, insumos, recetas, ventas y gastos.
+> Operaciones diarias del negocio: productos, insumos y recetas.
+>
+> **Ventas y gastos:** no implementados todavía.
+>
+> **Formato de respuestas:** ver `01-auth.md#formato-de-respuestas` — éxito en `data: {}`, validación en `errors: []`.
 
 ---
 
@@ -20,476 +24,413 @@
 - [Recetas](#recetas)
   - [Obtener receta · GET /recipes/:productId](#obtener-receta--get-recipesproductid)
   - [Crear o reemplazar · PUT /recipes/:productId](#crear-o-reemplazar--put-recipesproductid)
-- [Ventas](#ventas)
-  - [Listar · GET /sales](#listar--get-sales)
-  - [Crear orden · POST /sales](#crear-orden--post-sales)
-  - [Obtener por ID · GET /sales/:id](#obtener-por-id--get-salesid)
-  - [Ticket de orden · GET /sales/:id/receipt](#ticket-de-orden--get-salesidreceipt)
-  - [Cobrar o cancelar · PATCH /sales/:id/status](#cobrar-o-cancelar--patch-salesidstatus)
-  - [Cobro múltiple · POST /sales/bulk-pay](#cobro-múltiple--post-salesbulk-pay)
-  - [Corregir venta · PATCH /sales/:id](#corregir-venta--patch-salesid)
-- [Gastos](#gastos)
-  - [Listar · GET /expenses](#listar--get-expenses)
-  - [Crear · POST /expenses](#crear--post-expenses)
 
 ---
 
 ## Productos
 
+> `price` retorna como **string** (tipo Decimal de Prisma).
+
 ### Listar · GET /products
 
-> Lista todos los productos de la carta. Por defecto solo devuelve los activos.
-
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** Todos
-
----
+**Autenticación:** Bearer token · **Roles:** Todos
 
 #### Query parameters
 
-| Parámetro         | Tipo    | Default | Descripción                           |
-| ----------------- | ------- | ------- | ------------------------------------- |
+| Parámetro | Tipo | Default | Descripción |
+| --- | --- | --- | --- |
 | `includeInactive` | boolean | `false` | Si es `true` incluye los desactivados |
-| `category`        | string  | —       | Filtra por categoría                  |
+| `category` | string | — | Filtra por categoría |
 
----
-
-#### Ejemplo de request
-
-**Headers**
 ```
 GET /api/v1/products
 Authorization: Bearer <token>
 ```
 
----
-
 #### Respuesta exitosa · `200 OK`
+
 ```json
-// pendiente — completar al implementar
+{
+  "data": [
+    {
+      "id": "f0feca65-5203-4a60-bb55-1b71fca18e96",
+      "name": "Hamburguesa Clásica",
+      "price": "1500",
+      "category": "Hamburguesas",
+      "isActive": true,
+      "createdAt": "2026-04-16T21:30:11.640Z",
+      "updatedAt": "2026-04-16T21:30:11.640Z"
+    }
+  ]
+}
 ```
 
----
+#### Errores
 
-#### Casos de error
-
-| Status | Error        | Causa                    |
-| ------ | ------------ | ------------------------ |
-| 401    | Unauthorized | Token ausente o inválido |
+| Status | Causa |
+| --- | --- |
+| 401 | Token ausente o inválido |
 
 ---
 
 ### Crear · POST /products
 
-> Crea un nuevo producto en la carta.
-
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`
-
----
+**Autenticación:** Bearer token · **Roles:** OWNER
 
 #### Request body
 
-| Campo      | Tipo   | Requerido | Validación     | Descripción                           |
-| ---------- | ------ | --------- | -------------- | ------------------------------------- |
-| `name`     | string | ✅         | min 1, max 100 | Nombre del producto                   |
-| `price`    | number | ✅         | mayor a 0      | Precio de venta en soles              |
-| `category` | string | ✅         | min 1, max 50  | Categoría (ej: hamburguesas, bebidas) |
+| Campo | Tipo | Requerido | Validación | Descripción |
+| --- | --- | --- | --- | --- |
+| `name` | string | ✅ | mín. 1 · máx. 100 | Nombre del producto |
+| `price` | number | ✅ | mayor a 0 | Precio de venta |
+| `category` | string | ✅ | mín. 1 · máx. 50 | Categoría |
 
----
-
-#### Ejemplo de request
-
-**Headers**
-```
-POST /api/v1/products
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Body**
 ```json
-// pendiente — completar al implementar
+{
+  "name": "Hamburguesa Clásica",
+  "price": 1500,
+  "category": "Hamburguesas"
+}
 ```
-
----
 
 #### Respuesta exitosa · `201 Created`
+
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "id": "f0feca65-5203-4a60-bb55-1b71fca18e96",
+    "name": "Hamburguesa Clásica",
+    "price": "1500",
+    "category": "Hamburguesas",
+    "isActive": true,
+    "createdAt": "2026-04-16T21:30:11.640Z",
+    "updatedAt": "2026-04-16T21:30:11.640Z"
+  }
+}
 ```
 
----
+#### Errores
 
-#### Casos de error
-
-| Status | Error        | Causa                    |
-| ------ | ------------ | ------------------------ |
-| 400    | Bad Request  | Validación fallida       |
-| 401    | Unauthorized | Token ausente o inválido |
-| 403    | Forbidden    | Rol sin permiso          |
-| 409    | Conflict     | Nombre ya existe         |
+| Status | Causa |
+| --- | --- |
+| 400 | Validación fallida |
+| 401 | Token ausente o inválido |
+| 403 | Rol sin permiso |
+| 409 | Nombre ya existe |
 
 ---
 
 ### Obtener por ID · GET /products/:id
 
-> Devuelve un producto por su ID incluyendo si está inactivo.
-
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** Todos
-
----
+**Autenticación:** Bearer token · **Roles:** Todos
 
 #### Parámetros de ruta
 
-| Parámetro | Tipo | Descripción     |
-| --------- | ---- | --------------- |
-| `id`      | UUID | ID del producto |
+| Parámetro | Tipo | Descripción |
+| --- | --- | --- |
+| `id` | UUID | ID del producto |
 
----
-
-#### Ejemplo de request
-
-**Headers**
 ```
 GET /api/v1/products/:id
 Authorization: Bearer <token>
 ```
 
----
-
 #### Respuesta exitosa · `200 OK`
+
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "id": "f0feca65-5203-4a60-bb55-1b71fca18e96",
+    "name": "Hamburguesa Clásica",
+    "price": "1500",
+    "category": "Hamburguesas",
+    "isActive": true,
+    "createdAt": "2026-04-16T21:30:11.640Z",
+    "updatedAt": "2026-04-16T21:30:11.640Z"
+  }
+}
 ```
 
----
+#### Errores
 
-#### Casos de error
-
-| Status | Error        | Causa                    |
-| ------ | ------------ | ------------------------ |
-| 400    | Bad Request  | UUID mal formado         |
-| 401    | Unauthorized | Token ausente o inválido |
-| 404    | Not Found    | Producto no encontrado   |
+| Status | Causa |
+| --- | --- |
+| 400 | UUID mal formado |
+| 401 | Token ausente o inválido |
+| 404 | Producto no encontrado |
 
 ---
 
 ### Editar · PATCH /products/:id
 
-> Edita los datos de un producto. Todos los campos son opcionales.
+**Autenticación:** Bearer token · **Roles:** OWNER
 
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`
+#### Request body (todos opcionales)
 
----
+| Campo | Tipo | Descripción |
+| --- | --- | --- |
+| `name` | string | Nombre |
+| `price` | number | Precio |
+| `category` | string | Categoría |
 
-#### Parámetros de ruta
-
-| Parámetro | Tipo | Descripción     |
-| --------- | ---- | --------------- |
-| `id`      | UUID | ID del producto |
-
----
-
-#### Request body
-
-| Campo      | Tipo   | Requerido | Validación     | Descripción     |
-| ---------- | ------ | --------- | -------------- | --------------- |
-| `name`     | string | ❌         | min 1, max 100 | Nombre          |
-| `price`    | number | ❌         | mayor a 0      | Precio en soles |
-| `category` | string | ❌         | min 1, max 50  | Categoría       |
-
----
-
-#### Ejemplo de request
-
-**Headers**
-```
-PATCH /api/v1/products/:id
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Body**
 ```json
-// pendiente — completar al implementar
+{ "price": 1800 }
 ```
-
----
 
 #### Respuesta exitosa · `200 OK`
+
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "id": "f0feca65-5203-4a60-bb55-1b71fca18e96",
+    "name": "Hamburguesa Clásica",
+    "price": "1800",
+    "category": "Hamburguesas",
+    "isActive": true,
+    "createdAt": "2026-04-16T21:30:11.640Z",
+    "updatedAt": "2026-04-16T21:30:12.527Z"
+  }
+}
 ```
 
----
+#### Errores
 
-#### Casos de error
-
-| Status | Error        | Causa                    |
-| ------ | ------------ | ------------------------ |
-| 400    | Bad Request  | UUID mal formado         |
-| 401    | Unauthorized | Token ausente o inválido |
-| 403    | Forbidden    | Rol sin permiso          |
-| 404    | Not Found    | Producto no encontrado   |
-| 409    | Conflict     | Nombre ya existe         |
+| Status | Causa |
+| --- | --- |
+| 400 | UUID mal formado o validación fallida |
+| 401 | Token ausente o inválido |
+| 403 | Rol sin permiso |
+| 404 | Producto no encontrado |
+| 409 | Nombre ya existe |
 
 ---
 
 ### Desactivar · DELETE /products/:id
 
-> Desactiva un producto (soft delete). Deja de aparecer en la carta pero
-> su historial de ventas se conserva.
+Soft delete. El historial de ventas se conserva.
 
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`
+**Autenticación:** Bearer token · **Roles:** OWNER
 
----
-
-#### Parámetros de ruta
-
-| Parámetro | Tipo | Descripción     |
-| --------- | ---- | --------------- |
-| `id`      | UUID | ID del producto |
-
----
-
-#### Ejemplo de request
-
-**Headers**
 ```
 DELETE /api/v1/products/:id
 Authorization: Bearer <token>
 ```
 
----
-
 #### Respuesta exitosa · `200 OK`
+
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "id": "f0feca65-5203-4a60-bb55-1b71fca18e96",
+    "name": "Hamburguesa Clásica",
+    "price": "1800",
+    "category": "Hamburguesas",
+    "isActive": false,
+    "createdAt": "2026-04-16T21:30:11.640Z",
+    "updatedAt": "2026-04-16T21:30:48.574Z"
+  }
+}
 ```
 
----
+#### Errores
 
-#### Casos de error
-
-| Status | Error                | Causa                                      |
-| ------ | -------------------- | ------------------------------------------ |
-| 400    | Bad Request          | UUID mal formado                           |
-| 401    | Unauthorized         | Token ausente o inválido                   |
-| 403    | Forbidden            | Rol sin permiso                            |
-| 404    | Not Found            | Producto no encontrado                     |
-| 422    | Unprocessable Entity | El producto tiene órdenes abiertas activas |
+| Status | Causa |
+| --- | --- |
+| 400 | UUID mal formado |
+| 401 | Token ausente o inválido |
+| 403 | Rol sin permiso |
+| 404 | Producto no encontrado |
+| 422 | Producto con órdenes abiertas activas |
 
 ---
 
 ## Insumos
 
+> `stock`, `minStock` y `costPerUnit` retornan como **string** (Decimal de Prisma).
+> `is_low_stock` es un booleano calculado: `stock < minStock`.
+
 ### Listar · GET /ingredients
 
-> Lista todos los insumos con su stock actual.
-
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`
-
----
+**Autenticación:** Bearer token · **Roles:** OWNER
 
 #### Query parameters
 
-| Parámetro  | Tipo    | Default | Descripción                                                    |
-| ---------- | ------- | ------- | -------------------------------------------------------------- |
-| `lowStock` | boolean | `false` | Si es `true` devuelve solo los que están bajo el umbral mínimo |
+| Parámetro | Tipo | Default | Descripción |
+| --- | --- | --- | --- |
+| `lowStock` | boolean | `false` | Solo los que están bajo el umbral mínimo |
 
----
-
-#### Ejemplo de request
-
-**Headers**
 ```
 GET /api/v1/ingredients
 Authorization: Bearer <token>
 ```
 
----
-
 #### Respuesta exitosa · `200 OK`
+
 ```json
-// pendiente — completar al implementar
+{
+  "data": [
+    {
+      "id": "b23099be-d675-4118-8c64-b7d113511a6e",
+      "name": "Pan de hamburguesa",
+      "unit": "unidad",
+      "stock": "150",
+      "minStock": "20",
+      "costPerUnit": "50",
+      "createdAt": "2026-04-16T21:30:42.652Z",
+      "updatedAt": "2026-04-16T21:30:44.377Z",
+      "is_low_stock": false
+    }
+  ]
+}
 ```
 
----
+#### Errores
 
-#### Casos de error
-
-| Status | Error        | Causa                    |
-| ------ | ------------ | ------------------------ |
-| 401    | Unauthorized | Token ausente o inválido |
-| 403    | Forbidden    | Rol sin permiso          |
+| Status | Causa |
+| --- | --- |
+| 401 | Token ausente o inválido |
+| 403 | Rol sin permiso |
 
 ---
 
 ### Crear · POST /ingredients
 
-> Registra un nuevo insumo con su stock inicial y umbral mínimo de alerta.
-
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`
-
----
+**Autenticación:** Bearer token · **Roles:** OWNER
 
 #### Request body
 
-| Campo       | Tipo   | Requerido | Validación        | Descripción                             |
-| ----------- | ------ | --------- | ----------------- | --------------------------------------- |
-| `name`      | string | ✅         | min 1, max 100    | Nombre del insumo                       |
-| `unit`      | string | ✅         | min 1, max 20     | Unidad de medida (kg, unidades, litros) |
-| `stock`     | number | ✅         | mayor o igual a 0 | Stock inicial                           |
-| `min_stock` | number | ✅         | mayor o igual a 0 | Umbral mínimo para alerta OPS-7         |
+| Campo | Tipo | Requerido | Validación | Descripción |
+| --- | --- | --- | --- | --- |
+| `name` | string | ✅ | mín. 1 · máx. 100 | Nombre del insumo |
+| `unit` | string | ✅ | mín. 1 · máx. 20 | Unidad de medida (`kg`, `unidad`, `litro`) |
+| `stock` | number | ✅ | ≥ 0 | Stock inicial |
+| `min_stock` | number | ✅ | ≥ 0 | Umbral mínimo para alerta |
+| `cost_per_unit` | number | ❌ | ≥ 0 | Costo por unidad (default `0`) |
 
----
-
-#### Ejemplo de request
-
-**Headers**
-```
-POST /api/v1/ingredients
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Body**
 ```json
-// pendiente — completar al implementar
+{
+  "name": "Pan de hamburguesa",
+  "unit": "unidad",
+  "stock": 100,
+  "min_stock": 20,
+  "cost_per_unit": 50
+}
 ```
-
----
 
 #### Respuesta exitosa · `201 Created`
+
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "id": "b23099be-d675-4118-8c64-b7d113511a6e",
+    "name": "Pan de hamburguesa",
+    "unit": "unidad",
+    "stock": "100",
+    "minStock": "20",
+    "costPerUnit": "50",
+    "createdAt": "2026-04-16T21:30:42.652Z",
+    "updatedAt": "2026-04-16T21:30:42.652Z",
+    "is_low_stock": false
+  }
+}
 ```
 
----
+#### Errores
 
-#### Casos de error
-
-| Status | Error        | Causa                    |
-| ------ | ------------ | ------------------------ |
-| 400    | Bad Request  | Validación fallida       |
-| 401    | Unauthorized | Token ausente o inválido |
-| 403    | Forbidden    | Rol sin permiso          |
-| 409    | Conflict     | Nombre ya existe         |
+| Status | Causa |
+| --- | --- |
+| 400 | Validación fallida |
+| 401 | Token ausente o inválido |
+| 403 | Rol sin permiso |
+| 409 | Nombre ya existe |
 
 ---
 
 ### Obtener por ID · GET /ingredients/:id
 
-> Devuelve un insumo por su ID.
+**Autenticación:** Bearer token · **Roles:** OWNER
 
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`
-
----
-
-#### Parámetros de ruta
-
-| Parámetro | Tipo | Descripción   |
-| --------- | ---- | ------------- |
-| `id`      | UUID | ID del insumo |
-
----
-
-#### Ejemplo de request
-
-**Headers**
 ```
 GET /api/v1/ingredients/:id
 Authorization: Bearer <token>
 ```
 
----
-
 #### Respuesta exitosa · `200 OK`
+
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "id": "b23099be-d675-4118-8c64-b7d113511a6e",
+    "name": "Pan de hamburguesa",
+    "unit": "unidad",
+    "stock": "100",
+    "minStock": "20",
+    "costPerUnit": "50",
+    "createdAt": "2026-04-16T21:30:42.652Z",
+    "updatedAt": "2026-04-16T21:30:42.652Z",
+    "is_low_stock": false
+  }
+}
 ```
 
----
+#### Errores
 
-#### Casos de error
-
-| Status | Error        | Causa                    |
-| ------ | ------------ | ------------------------ |
-| 400    | Bad Request  | UUID mal formado         |
-| 401    | Unauthorized | Token ausente o inválido |
-| 403    | Forbidden    | Rol sin permiso          |
-| 404    | Not Found    | Insumo no encontrado     |
+| Status | Causa |
+| --- | --- |
+| 400 | UUID mal formado |
+| 401 | Token ausente o inválido |
+| 403 | Rol sin permiso |
+| 404 | Insumo no encontrado |
 
 ---
 
 ### Editar · PATCH /ingredients/:id
 
-> Edita los datos de un insumo. Todos los campos son opcionales.
-> Para ajustar el stock por una entrega de mercadería usar este endpoint.
+Usar para ajustar stock tras entrega de mercadería.
 
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`
+**Autenticación:** Bearer token · **Roles:** OWNER
 
----
+#### Request body (todos opcionales)
 
-#### Parámetros de ruta
+| Campo | Tipo | Descripción |
+| --- | --- | --- |
+| `name` | string | Nombre |
+| `unit` | string | Unidad de medida |
+| `stock` | number | Stock actual |
+| `min_stock` | number | Umbral mínimo |
+| `cost_per_unit` | number | Costo por unidad |
 
-| Parámetro | Tipo | Descripción   |
-| --------- | ---- | ------------- |
-| `id`      | UUID | ID del insumo |
-
----
-
-#### Request body
-
-| Campo       | Tipo   | Requerido | Validación        | Descripción          |
-| ----------- | ------ | --------- | ----------------- | -------------------- |
-| `name`      | string | ❌         | min 1, max 100    | Nombre               |
-| `unit`      | string | ❌         | min 1, max 20     | Unidad de medida     |
-| `stock`     | number | ❌         | mayor o igual a 0 | Stock actual         |
-| `min_stock` | number | ❌         | mayor o igual a 0 | Umbral mínimo alerta |
-
----
-
-#### Ejemplo de request
-
-**Headers**
-```
-PATCH /api/v1/ingredients/:id
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Body**
 ```json
-// pendiente — completar al implementar
+{ "stock": 150 }
 ```
-
----
 
 #### Respuesta exitosa · `200 OK`
+
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "id": "b23099be-d675-4118-8c64-b7d113511a6e",
+    "name": "Pan de hamburguesa",
+    "unit": "unidad",
+    "stock": "150",
+    "minStock": "20",
+    "costPerUnit": "50",
+    "createdAt": "2026-04-16T21:30:42.652Z",
+    "updatedAt": "2026-04-16T21:30:44.377Z",
+    "is_low_stock": false
+  }
+}
 ```
 
----
+#### Errores
 
-#### Casos de error
-
-| Status | Error        | Causa                    |
-| ------ | ------------ | ------------------------ |
-| 400    | Bad Request  | UUID mal formado         |
-| 401    | Unauthorized | Token ausente o inválido |
-| 403    | Forbidden    | Rol sin permiso          |
-| 404    | Not Found    | Insumo no encontrado     |
-| 409    | Conflict     | Nombre ya existe         |
+| Status | Causa |
+| --- | --- |
+| 400 | UUID mal formado o validación fallida |
+| 401 | Token ausente o inválido |
+| 403 | Rol sin permiso |
+| 404 | Insumo no encontrado |
+| 409 | Nombre ya existe |
 
 ---
 
@@ -497,582 +438,89 @@ Content-Type: application/json
 
 ### Obtener receta · GET /recipes/:productId
 
-> Devuelve la receta completa de un producto con sus insumos y cantidades.
+**Autenticación:** Bearer token · **Roles:** OWNER
 
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`
-
----
-
-#### Parámetros de ruta
-
-| Parámetro   | Tipo | Descripción     |
-| ----------- | ---- | --------------- |
-| `productId` | UUID | ID del producto |
-
----
-
-#### Ejemplo de request
-
-**Headers**
 ```
 GET /api/v1/recipes/:productId
 Authorization: Bearer <token>
 ```
 
----
-
 #### Respuesta exitosa · `200 OK`
+
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "product_id": "f0feca65-5203-4a60-bb55-1b71fca18e96",
+    "items": [
+      {
+        "id": "7296f29d-0fa9-4220-9918-6e7f4a69f354",
+        "ingredient_id": "b23099be-d675-4118-8c64-b7d113511a6e",
+        "ingredient_name": "Pan de hamburguesa",
+        "unit": "unidad",
+        "quantity": 1
+      }
+    ]
+  }
+}
 ```
 
----
+#### Errores
 
-#### Casos de error
-
-| Status | Error        | Causa                          |
-| ------ | ------------ | ------------------------------ |
-| 400    | Bad Request  | UUID mal formado               |
-| 401    | Unauthorized | Token ausente o inválido       |
-| 403    | Forbidden    | Rol sin permiso                |
-| 404    | Not Found    | Producto sin receta registrada |
+| Status | Causa |
+| --- | --- |
+| 400 | UUID mal formado |
+| 401 | Token ausente o inválido |
+| 403 | Rol sin permiso |
+| 404 | Producto sin receta registrada |
 
 ---
 
 ### Crear o reemplazar · PUT /recipes/:productId
 
-> Crea o reemplaza por completo la receta de un producto. Si ya existía
-> una receta, se elimina y se crea la nueva en una sola transacción.
+Reemplaza por completo la receta. Operación atómica: elimina la anterior y crea la nueva en una sola transacción.
 
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`
-
----
-
-#### Parámetros de ruta
-
-| Parámetro   | Tipo | Descripción     |
-| ----------- | ---- | --------------- |
-| `productId` | UUID | ID del producto |
-
----
+**Autenticación:** Bearer token · **Roles:** OWNER
 
 #### Request body
 
-| Campo                   | Tipo   | Requerido | Validación     | Descripción                     |
-| ----------------------- | ------ | --------- | -------------- | ------------------------------- |
-| `items`                 | array  | ✅         | min 1 elemento | Lista de insumos de la receta   |
-| `items[].ingredient_id` | UUID   | ✅         |                | ID del insumo                   |
-| `items[].quantity`      | number | ✅         | mayor a 0      | Cantidad por unidad de producto |
+| Campo | Tipo | Requerido | Validación | Descripción |
+| --- | --- | --- | --- | --- |
+| `items` | array | ✅ | mín. 1 | Lista de insumos |
+| `items[].ingredient_id` | UUID | ✅ | | ID del insumo |
+| `items[].quantity` | number | ✅ | mayor a 0 | Cantidad por unidad de producto |
 
----
-
-#### Ejemplo de request
-
-**Headers**
-```
-PUT /api/v1/recipes/:productId
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Body**
 ```json
-// pendiente — completar al implementar
+{
+  "items": [
+    { "ingredient_id": "b23099be-d675-4118-8c64-b7d113511a6e", "quantity": 1 }
+  ]
+}
 ```
-
----
 
 #### Respuesta exitosa · `200 OK`
+
 ```json
-// pendiente — completar al implementar
+{
+  "data": {
+    "product_id": "f0feca65-5203-4a60-bb55-1b71fca18e96",
+    "items": [
+      {
+        "id": "7296f29d-0fa9-4220-9918-6e7f4a69f354",
+        "ingredient_id": "b23099be-d675-4118-8c64-b7d113511a6e",
+        "ingredient_name": "Pan de hamburguesa",
+        "unit": "unidad",
+        "quantity": 1
+      }
+    ]
+  }
+}
 ```
 
----
-
-#### Casos de error
-
-| Status | Error        | Causa                           |
-| ------ | ------------ | ------------------------------- |
-| 400    | Bad Request  | UUID mal formado o validación   |
-| 401    | Unauthorized | Token ausente o inválido        |
-| 403    | Forbidden    | Rol sin permiso                 |
-| 404    | Not Found    | Producto o insumo no encontrado |
-
----
-
-## Ventas
-
-### Listar · GET /sales
-
-> Lista las órdenes del sistema. El dueño ve todas. El cajero y el mozo
-> solo ven las órdenes en estado `OPEN` del día actual.
-
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** Todos
-
----
-
-#### Query parameters
-
-| Parámetro | Tipo   | Default | Descripción                                   |
-| --------- | ------ | ------- | --------------------------------------------- |
-| `status`  | string | —       | Filtra por estado (`OPEN`, `PAID_CASH`, etc.) |
-| `from`    | date   | —       | Fecha de inicio `YYYY-MM-DD`                  |
-| `to`      | date   | —       | Fecha de fin `YYYY-MM-DD`                     |
-| `user_id` | UUID   | —       | Filtra por empleado (solo `OWNER`)            |
-| `page`    | int    | `1`     | Página                                        |
-| `limit`   | int    | `20`    | Registros por página                          |
-
----
-
-#### Ejemplo de request
-
-**Headers**
-```
-GET /api/v1/sales?status=OPEN
-Authorization: Bearer <token>
-```
-
----
-
-#### Respuesta exitosa · `200 OK`
-```json
-// pendiente — completar al implementar
-```
-
----
-
-#### Casos de error
-
-| Status | Error        | Causa                    |
-| ------ | ------------ | ------------------------ |
-| 401    | Unauthorized | Token ausente o inválido |
-
----
-
-### Crear orden · POST /sales
-
-> Registra una nueva orden. El stock no se descuenta en este momento,
-> solo al confirmar el cobro. Se genera el ticket automáticamente.
-
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`, `CASHIER`, `WAITER`
-
----
-
-#### Request body
-
-| Campo                | Tipo   | Requerido | Validación | Descripción                             |
-| -------------------- | ------ | --------- | ---------- | --------------------------------------- |
-| `items`              | array  | ✅         | min 1      | Lista de productos y cantidades         |
-| `items[].product_id` | UUID   | ✅         |            | ID del producto                         |
-| `items[].quantity`   | int    | ✅         | mayor a 0  | Cantidad ordenada                       |
-| `customer_name`      | string | ❌         | max 100    | Nombre del cliente para pagos digitales |
-
----
-
-#### Ejemplo de request
-
-**Headers**
-```
-POST /api/v1/sales
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Body**
-```json
-// pendiente — completar al implementar
-```
-
----
-
-#### Respuesta exitosa · `201 Created`
-```json
-// pendiente — completar al implementar
-```
-
----
-
-#### Casos de error
-
-| Status | Error                | Causa                    |
-| ------ | -------------------- | ------------------------ |
-| 400    | Bad Request          | Validación fallida       |
-| 401    | Unauthorized         | Token ausente o inválido |
-| 403    | Forbidden            | Rol sin permiso          |
-| 404    | Not Found            | product_id no existe     |
-| 422    | Unprocessable Entity | Producto inactivo        |
-
----
-
-### Obtener por ID · GET /sales/:id
-
-> Devuelve una orden completa con sus ítems.
-
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER` (cualquier orden), resto (solo sus propias órdenes del día)
-
----
-
-#### Parámetros de ruta
-
-| Parámetro | Tipo | Descripción    |
-| --------- | ---- | -------------- |
-| `id`      | UUID | ID de la orden |
-
----
-
-#### Ejemplo de request
-
-**Headers**
-```
-GET /api/v1/sales/:id
-Authorization: Bearer <token>
-```
-
----
-
-#### Respuesta exitosa · `200 OK`
-```json
-// pendiente — completar al implementar
-```
-
----
-
-#### Casos de error
-
-| Status | Error        | Causa                    |
-| ------ | ------------ | ------------------------ |
-| 400    | Bad Request  | UUID mal formado         |
-| 401    | Unauthorized | Token ausente o inválido |
-| 403    | Forbidden    | Acceso a orden ajena     |
-| 404    | Not Found    | Orden no encontrada      |
-
----
-
-### Ticket de orden · GET /sales/:id/receipt
-
-> Devuelve el resumen de la orden formateado como ticket para mostrar
-> en pantalla o enviar a impresora térmica bluetooth.
-
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`, `CASHIER`, `WAITER`
-
----
-
-#### Parámetros de ruta
-
-| Parámetro | Tipo | Descripción    |
-| --------- | ---- | -------------- |
-| `id`      | UUID | ID de la orden |
-
----
-
-#### Ejemplo de request
-
-**Headers**
-```
-GET /api/v1/sales/:id/receipt
-Authorization: Bearer <token>
-```
-
----
-
-#### Respuesta exitosa · `200 OK`
-```json
-// pendiente — completar al implementar
-```
-
----
-
-#### Casos de error
-
-| Status | Error        | Causa                    |
-| ------ | ------------ | ------------------------ |
-| 400    | Bad Request  | UUID mal formado         |
-| 401    | Unauthorized | Token ausente o inválido |
-| 403    | Forbidden    | Rol sin permiso          |
-| 404    | Not Found    | Orden no encontrada      |
-
----
-
-### Cobrar o cancelar · PATCH /sales/:id/status
-
-> Cambia el estado de una orden. Desde `OPEN` puede pasar a `PAID_*`
-> o `CANCELLED`. Al cobrar se descuenta el stock automáticamente.
-
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`, `CASHIER` (cobrar y cancelar), `WAITER` (solo cancelar sus propias órdenes)
-
----
-
-#### Parámetros de ruta
-
-| Parámetro | Tipo | Descripción    |
-| --------- | ---- | -------------- |
-| `id`      | UUID | ID de la orden |
-
----
-
-#### Request body
-
-| Campo    | Tipo             | Requerido | Descripción                                                       |
-| -------- | ---------------- | --------- | ----------------------------------------------------------------- |
-| `status` | sale_status_enum | ✅         | `PAID_CASH`, `PAID_YAPE`, `PAID_PLIN`, `PAID_AGORA` o `CANCELLED` |
-
----
-
-#### Ejemplo de request
-
-**Headers**
-```
-PATCH /api/v1/sales/:id/status
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Body**
-```json
-// pendiente — completar al implementar
-```
-
----
-
-#### Respuesta exitosa · `200 OK`
-```json
-// pendiente — completar al implementar
-```
-
----
-
-#### Casos de error
-
-| Status | Error                | Causa                                         |
-| ------ | -------------------- | --------------------------------------------- |
-| 400    | Bad Request          | UUID mal formado o status inválido            |
-| 401    | Unauthorized         | Token ausente o inválido                      |
-| 403    | Forbidden            | Rol sin permiso o cancelar orden ajena        |
-| 404    | Not Found            | Orden no encontrada                           |
-| 422    | Unprocessable Entity | Orden ya cobrada — no se puede cambiar estado |
-
----
-
-### Cobro múltiple · POST /sales/bulk-pay
-
-> Cobra varias órdenes en una sola operación. Útil cuando un cliente
-> paga por varias personas. El stock se descuenta en todas las órdenes.
-
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`, `CASHIER`
-
----
-
-#### Request body
-
-| Campo      | Tipo             | Requerido | Validación | Descripción                                          |
-| ---------- | ---------------- | --------- | ---------- | ---------------------------------------------------- |
-| `sale_ids` | UUID[]           | ✅         | min 2      | IDs de las órdenes a cobrar                          |
-| `status`   | sale_status_enum | ✅         |            | `PAID_CASH`, `PAID_YAPE`, `PAID_PLIN` o `PAID_AGORA` |
-
----
-
-#### Ejemplo de request
-
-**Headers**
-```
-POST /api/v1/sales/bulk-pay
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Body**
-```json
-// pendiente — completar al implementar
-```
-
----
-
-#### Respuesta exitosa · `200 OK`
-```json
-// pendiente — completar al implementar
-```
-
----
-
-#### Casos de error
-
-| Status | Error                | Causa                                            |
-| ------ | -------------------- | ------------------------------------------------ |
-| 400    | Bad Request          | Validación fallida                               |
-| 401    | Unauthorized         | Token ausente o inválido                         |
-| 403    | Forbidden            | Rol sin permiso                                  |
-| 404    | Not Found            | Una o más órdenes no encontradas                 |
-| 422    | Unprocessable Entity | Una o más órdenes ya están cobradas o canceladas |
-
----
-
-### Corregir venta · PATCH /sales/:id
-
-> Corrige los productos o cantidades de una orden. Solo el dueño puede
-> hacerlo. Se guarda quién realizó la corrección y cuándo.
-> Campos permitidos: productos, cantidades y método de pago.
-> No se puede editar el precio ni la fecha.
-
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`
-
----
-
-#### Parámetros de ruta
-
-| Parámetro | Tipo | Descripción    |
-| --------- | ---- | -------------- |
-| `id`      | UUID | ID de la orden |
-
----
-
-#### Request body
-
-| Campo                | Tipo  | Requerido | Validación | Descripción              |
-| -------------------- | ----- | --------- | ---------- | ------------------------ |
-| `items`              | array | ❌         | min 1      | Nueva lista de productos |
-| `items[].product_id` | UUID  | ✅         |            | ID del producto          |
-| `items[].quantity`   | int   | ✅         | mayor a 0  | Nueva cantidad           |
-
----
-
-#### Ejemplo de request
-
-**Headers**
-```
-PATCH /api/v1/sales/:id
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Body**
-```json
-// pendiente — completar al implementar
-```
-
----
-
-#### Respuesta exitosa · `200 OK`
-```json
-// pendiente — completar al implementar
-```
-
----
-
-#### Casos de error
-
-| Status | Error        | Causa                    |
-| ------ | ------------ | ------------------------ |
-| 400    | Bad Request  | UUID mal formado         |
-| 401    | Unauthorized | Token ausente o inválido |
-| 403    | Forbidden    | Rol sin permiso          |
-| 404    | Not Found    | Orden no encontrada      |
-
----
-
-## Gastos
-
-### Listar · GET /expenses
-
-> Lista los gastos del negocio con filtros por fecha.
-
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`
-
----
-
-#### Query parameters
-
-| Parámetro  | Tipo   | Default | Descripción          |
-| ---------- | ------ | ------- | -------------------- |
-| `from`     | date   | —       | Fecha de inicio      |
-| `to`       | date   | —       | Fecha de fin         |
-| `category` | string | —       | Filtra por categoría |
-| `page`     | int    | `1`     | Página               |
-| `limit`    | int    | `20`    | Registros por página |
-
----
-
-#### Ejemplo de request
-
-**Headers**
-```
-GET /api/v1/expenses
-Authorization: Bearer <token>
-```
-
----
-
-#### Respuesta exitosa · `200 OK`
-```json
-// pendiente — completar al implementar
-```
-
----
-
-#### Casos de error
-
-| Status | Error        | Causa                    |
-| ------ | ------------ | ------------------------ |
-| 401    | Unauthorized | Token ausente o inválido |
-| 403    | Forbidden    | Rol sin permiso          |
-
----
-
-### Crear · POST /expenses
-
-> Registra un gasto operativo. Base del cálculo de ganancia en el cierre de caja.
-
-**Autenticación:** Requiere Bearer token
-**Roles permitidos:** `OWNER`
-
----
-
-#### Request body
-
-| Campo         | Tipo   | Requerido | Validación                          | Descripción           |
-| ------------- | ------ | --------- | ----------------------------------- | --------------------- |
-| `description` | string | ✅         | min 1, max 200                      | Descripción del gasto |
-| `amount`      | number | ✅         | mayor a 0                           | Monto en soles        |
-| `category`    | string | ✅         | insumos, alquiler, servicios, otros | Categoría             |
-
----
-
-#### Ejemplo de request
-
-**Headers**
-```
-POST /api/v1/expenses
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Body**
-```json
-// pendiente — completar al implementar
-```
-
----
-
-#### Respuesta exitosa · `201 Created`
-```json
-// pendiente — completar al implementar
-```
-
----
-
-#### Casos de error
-
-| Status | Error        | Causa                    |
-| ------ | ------------ | ------------------------ |
-| 400    | Bad Request  | Validación fallida       |
-| 401    | Unauthorized | Token ausente o inválido |
-| 403    | Forbidden    | Rol sin permiso          |
+#### Errores
+
+| Status | Causa |
+| --- | --- |
+| 400 | UUID mal formado o validación fallida |
+| 401 | Token ausente o inválido |
+| 403 | Rol sin permiso |
+| 404 | Producto o insumo no encontrado |

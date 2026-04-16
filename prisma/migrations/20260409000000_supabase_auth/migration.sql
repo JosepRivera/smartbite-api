@@ -1,11 +1,10 @@
--- Migration baseline: SmartBite con Supabase Auth
+-- Migration: SmartBite schema completo con Supabase Auth
 --
--- IMPORTANTE: las tablas ya existen en Supabase (creadas via supabase-setup.sql).
--- Esta migration es el registro formal del schema actual para Prisma Migrate.
+-- LOCAL (Supabase CLI): esta migration corre normalmente con `prisma migrate deploy`.
+--   pnpm supabase:start → pnpm db:deploy (o pnpm db:migrate en dev)
 --
--- Una sola vez en cada proyecto de Supabase (dev/prod), ejecutar:
---   pnpm db:baseline
--- Eso marca esta migration como "ya aplicada" sin tocar la BD.
+-- CLOUD (Supabase existente con tablas ya creadas): registrar como baseline.
+--   pnpm db:baseline   → marca esta migration como aplicada sin tocar la BD.
 --
 -- Cambios respecto a la migration anterior (20260326180610_init):
 --   - users: eliminado campo `password` (Supabase Auth lo gestiona)

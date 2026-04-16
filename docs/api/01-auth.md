@@ -14,6 +14,7 @@
 - [POST /auth/refresh](#post-authrefresh)
 - [POST /auth/forgot-password](#post-authforgot-password)
 - [POST /auth/reset-password](#post-authreset-password)
+- [PATCH /auth/owner-email](#patch-authowner-email)
 - [Recuperación de acceso del dueño](#recuperación-de-acceso-del-dueño)
 
 ---
@@ -85,7 +86,7 @@ Login con usuario y contraseña. Válido para todos los usuarios: dueño y emple
   "data": {
     "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
     "refresh_token": "v1.AKd9...",
-    "expires_in": 900,
+    "expires_in": 3600,
     "user": {
       "id": "uuid-del-usuario",
       "name": "Juan García",
@@ -97,7 +98,7 @@ Login con usuario y contraseña. Válido para todos los usuarios: dueño y emple
 }
 ```
 
-> `expires_in` está en segundos. El access token expira a los 15 minutos (900 s).
+> `expires_in` está en segundos. El access token expira en 3600 s (1 hora).
 
 ### Errores
 
@@ -251,6 +252,53 @@ Authorization: Bearer <recovery_jwt>
 | 400 | Contraseña no cumple el mínimo de 6 caracteres |
 | 401 | Token de recovery inválido o expirado |
 | 500 | Error interno al actualizar en Supabase |
+
+---
+
+## PATCH /auth/owner-email
+
+Actualiza el email del dueño en Supabase Auth. Solo aplica para el OWNER — los empleados usan emails sintéticos `@smartbite.local` gestionados internamente.
+
+**Autenticación:** Bearer token requerido · Solo OWNER
+
+```
+PATCH /api/v1/auth/owner-email
+Authorization: Bearer <access_token>
+Content-Type: application/json
+```
+
+### Request body
+
+| Campo | Tipo | Requerido | Validación | Descripción |
+| ----- | ---- | --------- | ---------- | ----------- |
+| `email` | string | ✅ | formato email válido | Nuevo email del dueño |
+
+```json
+{
+  "email": "nuevo@gmail.com"
+}
+```
+
+### Respuesta exitosa · `200 OK`
+
+```json
+{
+  "data": {
+    "message": "Email actualizado correctamente."
+  }
+}
+```
+
+### Errores
+
+| Status | Causa |
+| ------ | ----- |
+| 400 | Formato de email inválido |
+| 401 | Token ausente o inválido |
+| 403 | Rol sin permiso (requiere OWNER) |
+| 500 | Error al actualizar en Supabase |
+
+> **Gotcha:** si cambiás el email, el login seguirá usando `{username}@smartbite.local` internamente. Este endpoint solo actualiza el email de contacto del dueño en Supabase Auth (usado para `forgot-password`).
 
 ---
 

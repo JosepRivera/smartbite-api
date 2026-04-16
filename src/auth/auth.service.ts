@@ -147,63 +147,8 @@ export class AuthService {
 	}
 
 	/**
-	 * Registra o verifica el perfil OWNER después del Google OAuth nativo del SDK Kotlin.
-	 * El cliente ya tiene tokens de Supabase — el JwtGuard validó el JWT antes de llegar acá.
-	 *
-	 * Primera vez: crea el perfil OWNER en nuestra BD.
-	 * Siguientes veces: devuelve el perfil existente.
-	 * Si ya hay un OWNER con distinto ID: 401.
-	 */
-	async registerOwnerSession(userId: string) {
-		// Verificar que no haya otro OWNER registrado con distinto ID
-		const existingOwner = await this.prisma.user.findFirst({
-			where: { role: "OWNER" },
-		});
-
-		if (existingOwner && existingOwner.id !== userId) {
-			throw new UnauthorizedException("Solo el dueño registrado puede acceder con Google.");
-		}
-
-		// Buscar o crear el perfil OWNER
-		let user = await this.prisma.user.findUnique({ where: { id: userId } });
-
-		if (!user) {
-			// Primera vez — obtener datos del usuario desde Supabase Auth
-			const { data, error } = await this.supabase.admin.auth.admin.getUserById(userId);
-
-			if (error || !data.user) {
-				throw new UnauthorizedException("No se pudo obtener el perfil de Supabase Auth.");
-			}
-
-			user = await this.prisma.user.create({
-				data: {
-					id: userId,
-					name: data.user.user_metadata?.full_name ?? data.user.email ?? "Dueño",
-					username: data.user.email?.split("@")[0] ?? userId.slice(0, 8),
-					role: "OWNER",
-				},
-			});
-		}
-
-		// Asegurar que app_metadata.role esté seteado — requerido por RolesGuard.
-		// El JWT de Supabase no incluye roles de nuestra BD, solo de app_metadata.
-		await this.supabase.admin.auth.admin.updateUserById(userId, {
-			app_metadata: { role: "OWNER" },
-		});
-
-		return {
-			id: user.id,
-			name: user.name,
-			username: user.username,
-			role: user.role,
-			isActive: user.isActive,
-		};
-	}
-
-	/**
-	 * Actualiza el email de Google del dueño en Supabase Auth.
-	 * Solo funciona mientras el dueño tiene una sesión activa con su Gmail actual.
-	 * Si pierde acceso al Gmail anterior, debe hacerse manualmente en el dashboard de Supabase.
+	 * Actualiza el email del dueño en Supabase Auth.
+	 * Si perdió acceso al email anterior, debe hacerse manualmente en el dashboard de Supabase.
 	 */
 	async updateOwnerEmail(userId: string, dto: UpdateOwnerEmailDto) {
 		const { error } = await this.supabase.admin.auth.admin.updateUserById(userId, {
@@ -215,6 +160,6 @@ export class AuthService {
 			throw new InternalServerErrorException("Error actualizando el email");
 		}
 
-		return { message: "Email actualizado. Usá el nuevo Gmail para iniciar sesión." };
+		return { message: "Email actualizado correctamente." };
 	}
 }

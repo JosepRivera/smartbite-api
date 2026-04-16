@@ -94,38 +94,17 @@ export class AuthController {
 		return this.authService.resetPassword(user.sub, dto);
 	}
 
-	@Post("owner-session")
-	@HttpCode(200)
-	@UseGuards(JwtGuard)
-	@ApiBearerAuth("access-token")
-	@ApiOperation({
-		summary: "Registrar o verificar sesión del dueño (Google OAuth)",
-		description:
-			"El cliente Kotlin llama este endpoint después de autenticarse con Google via el SDK de Supabase. " +
-			"Primera vez: crea el perfil OWNER en la BD. " +
-			"Siguientes veces: devuelve el perfil existente. " +
-			"Si ya hay un OWNER con distinto ID, retorna 401.",
-	})
-	@ApiResponse({ status: 200, description: "Perfil OWNER registrado o verificado correctamente." })
-	@ApiResponse({
-		status: 401,
-		description: "Token inválido o la cuenta Google no es la del dueño registrado.",
-	})
-	ownerSession(@CurrentUser() user: { sub: string }) {
-		return this.authService.registerOwnerSession(user.sub);
-	}
-
 	@Patch("owner-email")
 	@HttpCode(200)
 	@UseGuards(JwtGuard, RolesGuard)
 	@Roles("OWNER")
 	@ApiBearerAuth("access-token")
 	@ApiOperation({
-		summary: "Actualizar Gmail del dueño",
+		summary: "Actualizar email del dueño",
 		description:
-			"Actualiza el email de Google del dueño en Supabase Auth. " +
+			"Actualiza el email del dueño en Supabase Auth. " +
 			"Solo funciona mientras el dueño tiene una sesión activa. " +
-			"Si ya perdió acceso al Gmail anterior, debe hacerlo desde el dashboard de Supabase.",
+			"Si perdió acceso al email anterior, debe hacerlo desde el dashboard de Supabase.",
 	})
 	@ApiResponse({ status: 200, description: "Email actualizado correctamente." })
 	@ApiResponse({ status: 401, description: "Token ausente o inválido." })
