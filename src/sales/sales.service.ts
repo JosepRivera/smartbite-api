@@ -58,17 +58,18 @@ export class SalesService {
 			select: { id: true, name: true, price: true },
 		});
 
-		if (products.length !== productIds.length) {
-			const foundIds = new Set(products.map((p) => p.id));
-			const missing = productIds.find((id) => !foundIds.has(id));
-			throw new NotFoundException(`Producto no encontrado o inactivo: ${missing}`);
-		}
+		const itemsData = dto.items.map((item) => {
+			const product = products.find((p) => p.id === item.product_id);
+			if (!product)
+				throw new NotFoundException(`Producto no encontrado o inactivo: ${item.product_id}`);
+			return {
+				productId: item.product_id,
+				quantity: item.quantity,
+				unitPrice: product.price,
+			};
+		});
 
-		const priceMap = new Map(products.map((p) => [p.id, p.price]));
-
-		const total = dto.items.reduce((acc, item) => {
-			return acc + Number(priceMap.get(item.product_id)) * item.quantity;
-		}, 0);
+		const total = itemsData.reduce((acc, item) => acc + Number(item.unitPrice) * item.quantity, 0);
 
 		const sale = await this.prisma.sale.create({
 			data: {
@@ -78,11 +79,7 @@ export class SalesService {
 				tableNumber: dto.table_number,
 				customerName: dto.customer_name,
 				items: {
-					create: dto.items.map((item) => ({
-						productId: item.product_id,
-						quantity: item.quantity,
-						unitPrice: priceMap.get(item.product_id)!,
-					})),
+					create: itemsData,
 				},
 			},
 			include: SALE_INCLUDE,
@@ -102,6 +99,9 @@ export class SalesService {
 		}
 
 		if (date) {
+			if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+				throw new BadRequestException("Fecha inválida. Formato esperado: YYYY-MM-DD");
+			}
 			const start = new Date(date);
 			if (Number.isNaN(start.getTime())) {
 				throw new BadRequestException("Fecha inválida. Formato esperado: YYYY-MM-DD");

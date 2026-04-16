@@ -32,21 +32,28 @@
 
 ## Gestión operativa · `docs/api/02-ops.md`
 
-| Método | Endpoint            | Descripción               | Roles |
-| ------ | ------------------- | ------------------------- | ----- |
-| GET    | /products           | Listar productos          | Todos |
-| POST   | /products           | Crear producto            | OWNER |
-| GET    | /products/:id       | Obtener producto          | Todos |
-| PATCH  | /products/:id       | Editar producto           | OWNER |
-| DELETE | /products/:id       | Desactivar producto       | OWNER |
-| GET    | /ingredients        | Listar insumos            | OWNER |
-| POST   | /ingredients        | Crear insumo              | OWNER |
-| GET    | /ingredients/:id    | Obtener insumo            | OWNER |
-| PATCH  | /ingredients/:id    | Editar insumo / stock     | OWNER |
-| GET    | /recipes/:productId | Obtener receta            | OWNER |
-| PUT    | /recipes/:productId | Crear o reemplazar receta | OWNER |
-
-> Ventas y gastos: no implementados.
+| Método | Endpoint              | Descripción               | Roles              |
+| ------ | --------------------- | ------------------------- | ------------------ |
+| GET    | /products             | Listar productos          | Todos              |
+| POST   | /products             | Crear producto            | OWNER              |
+| GET    | /products/:id         | Obtener producto          | Todos              |
+| PATCH  | /products/:id         | Editar producto           | OWNER              |
+| DELETE | /products/:id         | Desactivar producto       | OWNER              |
+| GET    | /ingredients          | Listar insumos            | OWNER              |
+| POST   | /ingredients          | Crear insumo              | OWNER              |
+| GET    | /ingredients/:id      | Obtener insumo            | OWNER              |
+| PATCH  | /ingredients/:id      | Editar insumo / stock     | OWNER              |
+| GET    | /recipes/:productId   | Obtener receta            | OWNER              |
+| PUT    | /recipes/:productId   | Crear o reemplazar receta | OWNER              |
+| POST   | /sales                | Crear venta               | OWNER/CASHIER/WAITER |
+| GET    | /sales                | Listar ventas             | Todos              |
+| GET    | /sales/:id            | Obtener venta             | Todos              |
+| PATCH  | /sales/:id/pay        | Cobrar venta              | OWNER/CASHIER      |
+| PATCH  | /sales/:id/cancel     | Cancelar venta            | OWNER/CASHIER      |
+| POST   | /expenses             | Registrar gasto           | OWNER/CASHIER      |
+| GET    | /expenses             | Listar gastos             | OWNER/CASHIER      |
+| GET    | /expenses/:id         | Obtener gasto             | OWNER/CASHIER      |
+| DELETE | /expenses/:id         | Eliminar gasto            | OWNER              |
 
 ---
 

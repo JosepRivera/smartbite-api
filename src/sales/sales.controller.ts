@@ -50,7 +50,11 @@ export class SalesController {
 		summary: "Listar ventas",
 		description: "Lista ventas con filtros opcionales por estado y fecha (YYYY-MM-DD).",
 	})
-	@ApiQuery({ name: "status", required: false, enum: ["OPEN", "PAID_CASH", "PAID_YAPE", "PAID_PLIN", "PAID_AGORA", "CANCELLED"] })
+	@ApiQuery({
+		name: "status",
+		required: false,
+		enum: ["OPEN", "PAID_CASH", "PAID_YAPE", "PAID_PLIN", "PAID_AGORA", "CANCELLED"],
+	})
 	@ApiQuery({ name: "date", required: false, description: "Fecha en formato YYYY-MM-DD" })
 	@ApiResponse({ status: 200, description: "Lista de ventas." })
 	@ApiResponse({ status: 401, description: "Token ausente o inválido." })

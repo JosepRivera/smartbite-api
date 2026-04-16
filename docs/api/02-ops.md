@@ -2,9 +2,64 @@
 
 > Operaciones diarias del negocio: productos, insumos y recetas.
 >
-> **Ventas y gastos:** no implementados todavía.
+> **Base URL:** `http://localhost:3000/api/v1`
 >
 > **Formato de respuestas:** ver `01-auth.md#formato-de-respuestas` — éxito en `data: {}`, validación en `errors: []`.
+
+## Formatos de error
+
+### Validación de body (Zod) · `400`
+
+Cuando el body no cumple el schema, cada campo inválido aparece en `errors[]`:
+
+```json
+{
+  "statusCode": 400,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "code": "invalid_type",
+      "expected": "number",
+      "path": ["price"],
+      "message": "Invalid input: expected number, received undefined"
+    }
+  ]
+}
+```
+
+### Error de negocio / guard · `4xx`
+
+Autenticación, permisos, not found, UUID inválido — formato plano:
+
+```json
+{
+  "message": "Producto no encontrado",
+  "error": "Not Found",
+  "statusCode": 404
+}
+```
+
+### UUID inválido en ruta · `400`
+
+```json
+{
+  "message": "Validation failed (uuid is expected)",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+### Sin token · `401`
+
+```json
+{
+  "message": "Token ausente",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+---
 
 ---
 
@@ -22,6 +77,17 @@
   - [Obtener por ID · GET /ingredients/:id](#obtener-por-id--get-ingredientsid)
   - [Editar · PATCH /ingredients/:id](#editar--patch-ingredientsid)
 - [Recetas](#recetas)
+- [Ventas](#ventas)
+  - [Crear venta · POST /sales](#crear-venta--post-sales)
+  - [Listar ventas · GET /sales](#listar-ventas--get-sales)
+  - [Obtener venta · GET /sales/:id](#obtener-venta--get-salesid)
+  - [Cobrar venta · PATCH /sales/:id/pay](#cobrar-venta--patch-salesidpay)
+  - [Cancelar venta · PATCH /sales/:id/cancel](#cancelar-venta--patch-salesidcancel)
+- [Gastos](#gastos)
+  - [Registrar gasto · POST /expenses](#registrar-gasto--post-expenses)
+  - [Listar gastos · GET /expenses](#listar-gastos--get-expenses)
+  - [Obtener gasto · GET /expenses/:id](#obtener-gasto--get-expensesid)
+  - [Eliminar gasto · DELETE /expenses/:id](#eliminar-gasto--delete-expensesid)
   - [Obtener receta · GET /recipes/:productId](#obtener-receta--get-recipesproductid)
   - [Crear o reemplazar · PUT /recipes/:productId](#crear-o-reemplazar--put-recipesproductid)
 
@@ -524,3 +590,369 @@ Reemplaza por completo la receta. Operación atómica: elimina la anterior y cre
 | 401 | Token ausente o inválido |
 | 403 | Rol sin permiso |
 | 404 | Producto o insumo no encontrado |
+
+---
+
+## Ventas
+
+> `total`, `unit_price` y `subtotal` retornan como **number** (calculados en JS).
+> El stock de insumos se descuenta automáticamente al cobrar, según la receta de cada producto.
+
+### Crear venta · POST /sales
+
+Crea una venta nueva en estado `OPEN`. El precio se toma del producto en el momento de la venta (snapshot). Solo acepta productos activos.
+
+**Autenticación:** Bearer token · **Roles:** OWNER, CASHIER, WAITER
+
+#### Request body
+
+| Campo | Tipo | Requerido | Validación | Descripción |
+| --- | --- | --- | --- | --- |
+| `items` | array | ✅ | mín. 1 | Ítems de la venta |
+| `items[].product_id` | UUID | ✅ | | ID del producto activo |
+| `items[].quantity` | integer | ✅ | > 0 | Cantidad |
+| `table_number` | string | ❌ | máx. 10 | Número o nombre de mesa |
+| `customer_name` | string | ❌ | máx. 100 | Nombre del cliente |
+
+```json
+{
+  "items": [
+    { "product_id": "89c04027-59c0-4e4e-885e-fab292015dae", "quantity": 2 },
+    { "product_id": "e9da7c23-05ff-4176-a8f3-883908636183", "quantity": 1 }
+  ],
+  "table_number": "5",
+  "customer_name": "Juan"
+}
+```
+
+#### Respuesta exitosa · `201 Created`
+
+```json
+{
+  "data": {
+    "id": "c38b05a9-a3fe-4771-abb7-04011a56b0e1",
+    "status": "OPEN",
+    "total": 4800,
+    "table_number": "5",
+    "customer_name": "Juan",
+    "created_at": "2026-04-16T22:14:19.198Z",
+    "user": {
+      "id": "e510d36a-10ea-45b9-9415-0e9a3d201643",
+      "name": "Dueño SmartBite",
+      "username": "owner"
+    },
+    "items": [
+      {
+        "id": "f36ab915-b371-43cc-924b-9081739b4686",
+        "product_id": "89c04027-59c0-4e4e-885e-fab292015dae",
+        "product_name": "Hamburguesa Doble",
+        "quantity": 2,
+        "unit_price": 2000,
+        "subtotal": 4000
+      },
+      {
+        "id": "53b64b6c-1d48-4061-b137-3a2b9baf1edd",
+        "product_id": "e9da7c23-05ff-4176-a8f3-883908636183",
+        "product_name": "Papas Fritas",
+        "quantity": 1,
+        "unit_price": 800,
+        "subtotal": 800
+      }
+    ]
+  }
+}
+```
+
+#### Errores
+
+| Status | Causa |
+| --- | --- |
+| 400 | Validación fallida (items vacío, UUID inválido, quantity ≤ 0) |
+| 401 | Token ausente o inválido |
+| 403 | Rol sin permiso |
+| 404 | Producto no encontrado o inactivo |
+
+---
+
+### Listar ventas · GET /sales
+
+**Autenticación:** Bearer token · **Roles:** Todos
+
+#### Query parameters
+
+| Parámetro | Tipo | Descripción |
+| --- | --- | --- |
+| `status` | enum | Filtra por estado: `OPEN` \| `PAID_CASH` \| `PAID_YAPE` \| `PAID_PLIN` \| `PAID_AGORA` \| `CANCELLED` |
+| `date` | string | Fecha en formato `YYYY-MM-DD` — devuelve solo las ventas de ese día |
+
+```
+GET /api/v1/sales?status=OPEN
+GET /api/v1/sales?date=2026-04-16
+Authorization: Bearer <token>
+```
+
+#### Respuesta exitosa · `200 OK`
+
+```json
+{
+  "data": [
+    {
+      "id": "c38b05a9-a3fe-4771-abb7-04011a56b0e1",
+      "status": "PAID_YAPE",
+      "total": 4800,
+      "table_number": "5",
+      "customer_name": "Juan",
+      "created_at": "2026-04-16T22:14:19.198Z",
+      "user": { "id": "...", "name": "Dueño SmartBite", "username": "owner" },
+      "items": [ ... ]
+    }
+  ]
+}
+```
+
+#### Errores
+
+| Status | Causa | Mensaje |
+| --- | --- | --- |
+| 400 | `status` inválido | `"Estado inválido: INVALID"` |
+| 400 | `date` mal formada (no `YYYY-MM-DD`) | `"Fecha inválida. Formato esperado: YYYY-MM-DD"` |
+| 401 | Token ausente o inválido | — |
+
+---
+
+### Obtener venta · GET /sales/:id
+
+**Autenticación:** Bearer token · **Roles:** Todos
+
+```
+GET /api/v1/sales/:id
+Authorization: Bearer <token>
+```
+
+#### Errores
+
+| Status | Causa | Mensaje |
+| --- | --- | --- |
+| 400 | UUID mal formado | `"Validation failed (uuid is expected)"` |
+| 401 | Token ausente o inválido | — |
+| 404 | Venta no encontrada | `"Venta no encontrada"` |
+
+---
+
+### Cobrar venta · PATCH /sales/:id/pay
+
+Cambia el estado de `OPEN` a `PAID_*` y descuenta el stock de insumos según las recetas de cada producto. Operación atómica — si falla el descuento de stock, el estado no cambia.
+
+**Autenticación:** Bearer token · **Roles:** OWNER, CASHIER
+
+#### Request body
+
+| Campo | Tipo | Requerido | Validación | Descripción |
+| --- | --- | --- | --- | --- |
+| `payment_method` | enum | ✅ | `CASH`\|`YAPE`\|`PLIN`\|`AGORA` | Método de pago |
+
+```json
+{ "payment_method": "YAPE" }
+```
+
+#### Respuesta exitosa · `200 OK`
+
+```json
+{
+  "data": {
+    "id": "c38b05a9-a3fe-4771-abb7-04011a56b0e1",
+    "status": "PAID_YAPE"
+  }
+}
+```
+
+#### Errores
+
+| Status | Causa | Mensaje |
+| --- | --- | --- |
+| 400 | UUID mal formado | `"Validation failed (uuid is expected)"` |
+| 400 | `payment_method` inválido | `"Invalid option: expected one of \"CASH\"\|\"YAPE\"\|\"PLIN\"\|\"AGORA\""` |
+| 401 | Token ausente o inválido | — |
+| 403 | Rol sin permiso | — |
+| 404 | Venta no encontrada | `"Venta no encontrada"` |
+| 422 | Venta no está en estado `OPEN` | `"La venta ya está en estado: PAID_YAPE"` |
+
+---
+
+### Cancelar venta · PATCH /sales/:id/cancel
+
+Cancela una venta `OPEN`. **No revierte el stock** — la venta no fue cobrada, no hubo descuento.
+
+**Autenticación:** Bearer token · **Roles:** OWNER, CASHIER
+
+```
+PATCH /api/v1/sales/:id/cancel
+Authorization: Bearer <token>
+```
+
+#### Respuesta exitosa · `200 OK`
+
+```json
+{
+  "data": {
+    "id": "259e3942-21d5-463c-8cec-3bf62eaf0279",
+    "status": "CANCELLED"
+  }
+}
+```
+
+#### Errores
+
+| Status | Causa | Mensaje |
+| --- | --- | --- |
+| 400 | UUID mal formado | `"Validation failed (uuid is expected)"` |
+| 401 | Token ausente o inválido | — |
+| 403 | Rol sin permiso | — |
+| 404 | Venta no encontrada | `"Venta no encontrada"` |
+| 422 | Venta no está en estado `OPEN` | `"La venta ya está en estado: CANCELLED"` |
+
+---
+
+## Gastos
+
+> `amount` retorna como **number**.
+> El filtro `category` es **case-insensitive**.
+
+### Registrar gasto · POST /expenses
+
+**Autenticación:** Bearer token · **Roles:** OWNER, CASHIER
+
+#### Request body
+
+| Campo | Tipo | Requerido | Validación | Descripción |
+| --- | --- | --- | --- | --- |
+| `description` | string | ✅ | mín. 1 · máx. 200 | Descripción del gasto |
+| `amount` | number | ✅ | > 0 | Monto |
+| `category` | string | ✅ | mín. 1 · máx. 50 | Categoría (ej: `Insumos`, `Servicios`) |
+
+```json
+{
+  "description": "Compra de papas",
+  "amount": 1200,
+  "category": "Insumos"
+}
+```
+
+#### Respuesta exitosa · `201 Created`
+
+```json
+{
+  "data": {
+    "id": "ff4185ff-31ad-43e7-a0e7-988bf1ba8edd",
+    "description": "Compra de papas",
+    "amount": 1200,
+    "category": "Insumos",
+    "created_at": "2026-04-16T22:15:18.934Z",
+    "user_id": "e510d36a-10ea-45b9-9415-0e9a3d201643"
+  }
+}
+```
+
+#### Errores
+
+| Status | Causa |
+| --- | --- |
+| 400 | Validación fallida |
+| 401 | Token ausente o inválido |
+| 403 | Rol sin permiso |
+
+---
+
+### Listar gastos · GET /expenses
+
+**Autenticación:** Bearer token · **Roles:** OWNER, CASHIER
+
+#### Query parameters
+
+| Parámetro | Tipo | Descripción |
+| --- | --- | --- |
+| `date` | string | Fecha `YYYY-MM-DD` |
+| `category` | string | Filtro case-insensitive por categoría |
+
+```
+GET /api/v1/expenses?date=2026-04-16&category=Insumos
+Authorization: Bearer <token>
+```
+
+#### Respuesta exitosa · `200 OK`
+
+```json
+{
+  "data": [
+    {
+      "id": "ff4185ff-31ad-43e7-a0e7-988bf1ba8edd",
+      "description": "Compra de papas",
+      "amount": 1200,
+      "category": "Insumos",
+      "created_at": "2026-04-16T22:15:18.934Z",
+      "user_id": "e510d36a-10ea-45b9-9415-0e9a3d201643"
+    }
+  ]
+}
+```
+
+#### Errores
+
+| Status | Causa | Mensaje |
+| --- | --- | --- |
+| 400 | `date` mal formada (no `YYYY-MM-DD`) | `"Fecha inválida. Formato esperado: YYYY-MM-DD"` |
+| 401 | Token ausente o inválido | — |
+| 403 | Rol sin permiso | — |
+
+---
+
+### Obtener gasto · GET /expenses/:id
+
+**Autenticación:** Bearer token · **Roles:** OWNER, CASHIER
+
+```
+GET /api/v1/expenses/:id
+Authorization: Bearer <token>
+```
+
+#### Errores
+
+| Status | Causa | Mensaje |
+| --- | --- | --- |
+| 400 | UUID mal formado | `"Validation failed (uuid is expected)"` |
+| 401 | Token ausente o inválido | — |
+| 403 | Rol sin permiso | — |
+| 404 | Gasto no encontrado | `"Gasto no encontrado"` |
+
+---
+
+### Eliminar gasto · DELETE /expenses/:id
+
+Hard delete — el gasto se elimina permanentemente.
+
+**Autenticación:** Bearer token · **Roles:** OWNER
+
+```
+DELETE /api/v1/expenses/:id
+Authorization: Bearer <token>
+```
+
+#### Respuesta exitosa · `200 OK`
+
+```json
+{
+  "data": {
+    "id": "5375ee66-1c6b-4d06-bf47-5089f4cacfc4",
+    "deleted": true
+  }
+}
+```
+
+#### Errores
+
+| Status | Causa | Mensaje |
+| --- | --- | --- |
+| 400 | UUID mal formado | `"Validation failed (uuid is expected)"` |
+| 401 | Token ausente o inválido | — |
+| 403 | Rol sin permiso | — |
+| 404 | Gasto no encontrado | `"Gasto no encontrado"` |

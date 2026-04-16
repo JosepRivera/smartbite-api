@@ -39,7 +39,7 @@ La autenticación es gestionada por **Supabase Auth**: todos los usuarios (dueñ
 | OPS-2  | Insumos y stock | ✅ |
 | OPS-3  | Recetas por producto | ✅ |
 | OPS-4  | Registro de ventas con cobro | ✅ |
-| OPS-5  | Gastos y compras | ⏳ |
+| OPS-5  | Gastos y compras | ✅ |
 | OPS-6  | Historial y corrección de ventas | ⏳ |
 | OPS-7  | Alertas de stock bajo | ⏳ |
 | REP-1  | Dashboard en tiempo real | ⏳ |
