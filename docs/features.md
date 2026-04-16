@@ -22,14 +22,15 @@ SmartBite tiene 19 funcionalidades distribuidas en 6 módulos. La columna **Acce
 
 Supabase Auth gestiona toda la identidad: tokens, sesiones y credenciales. NestJS solo valida el JWT emitido por Supabase.
 
-- El dueño se autentica con Google OAuth via el SDK Kotlin. El SDK maneja el flujo completo y entrega tokens directamente desde Supabase. Después del OAuth, Kotlin llama `POST /auth/owner-session` para registrar o verificar el perfil en nuestra BD. La primera cuenta Google que ingresa queda registrada como OWNER — ninguna otra puede acceder después.
-- Los empleados se autentican con usuario y contraseña creados por el dueño. El email en Supabase es sintético: `{username}@smartbite.local`.
+- Todos los usuarios (dueño y empleados) se autentican con email y contraseña desde el formulario de login. No hay OAuth de terceros (sin Google, sin GitHub).
+- El dueño usa su email real. Los empleados usan email sintético `{username}@smartbite.local` creado por el dueño.
 - El access token expira en 15 minutos. El refresh token rota en cada uso.
-- Si el dueño necesita cambiar su Gmail puede hacerlo desde `PATCH /auth/owner-email` mientras tenga sesión activa. Si pierde acceso a su cuenta de Google, la recuperación debe hacerse desde el dashboard de Supabase.
+- En desarrollo local se usa Supabase CLI (`supabase start`) — levanta BD + Auth local sin depender de la nube.
 
 **Decisiones de diseño:**
 - NestJS no firma JWT. Supabase los firma con RS256 y los publica en su JWKS endpoint.
 - No hay `JWT_SECRET` en el proyecto. El `JwtGuard` valida contra el JWKS público de Supabase.
+- Sin OAuth externo. Flujo único y predecible para todos los roles: formulario → Supabase → token → API.
 - Empleados no tienen recuperación de contraseña por email — usan emails sintéticos. El dueño resetea sus contraseñas desde AUTH-2.
 
 ### AUTH-2 · Gestión de empleados y roles
@@ -39,7 +40,7 @@ El dueño crea, edita y desactiva cuentas de empleados. No existe registro públ
 
 - La desactivación es un soft delete: el historial de ventas del empleado se conserva.
 - El dueño puede resetear la contraseña de cualquier empleado — esto reemplaza la recuperación por email para empleados.
-- El dueño puede cambiar su propio email de Google desde este módulo.
+- Si el dueño pierde acceso a su email, la recuperación debe hacerse desde el dashboard de Supabase.
 
 ---
 

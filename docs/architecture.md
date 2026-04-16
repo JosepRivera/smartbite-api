@@ -11,8 +11,9 @@ SmartBite es un sistema de gestión para restaurantes con backend en NestJS, cli
 | Backend | NestJS v11 + TypeScript | API REST, Guards, módulos de negocio |
 | ORM | Prisma v7 | Queries, migraciones, tipado de BD |
 | Base de datos | PostgreSQL 16 | Persistencia principal |
-| Autenticación | Supabase Auth | JWT, sesiones, Google OAuth, credenciales |
+| Autenticación | Supabase Auth | JWT (RS256), sesiones, email/contraseña — sin OAuth de terceros |
 | Plataforma | Supabase | BD en producción + Auth en todos los entornos |
+| Desarrollo local | Supabase CLI | BD + Auth local en un solo comando (`supabase start`) |
 | Clientes | Kotlin (Jetpack Compose) | Web y Android — acceso por rol |
 | App de pagos | Kotlin Android nativo | Listener de notificaciones Yape/Plin/Ágora |
 | IA conversacional | Claude API (Anthropic) | Text-to-SQL, ajuste de predicción, extracción de entidades, MRP narrativo |
@@ -41,7 +42,7 @@ Los Guards de NestJS validan el JWT y el rol en cada endpoint. El rol viene en e
 
 | Módulo | Responsabilidad | Feature |
 | ------ | --------------- | ------- |
-| `AuthModule` | Login, logout, refresh, Google OAuth, reset de contraseñas | AUTH-1 |
+| `AuthModule` | Login, logout, refresh, reset de contraseñas | AUTH-1 |
 | `UsersModule` | CRUD de empleados y roles, reset de contraseña por el dueño | AUTH-2 |
 | `ProductsModule` | CRUD de productos y precios | OPS-1 |
 | `IngredientsModule` | CRUD de insumos, stock y alertas | OPS-2, OPS-7 |
@@ -67,9 +68,9 @@ Los Guards de NestJS validan el JWT y el rol en cada endpoint. El rol viene en e
 
 Supabase Auth es la fuente de verdad para identidad. NestJS no firma tokens ni gestiona contraseñas.
 
-**Dueño:** se autentica con Google OAuth via el SDK Kotlin (`supabase.auth.signInWith(Google)`). El SDK maneja el flujo completo y entrega tokens directamente. Después del OAuth, Kotlin llama `POST /auth/owner-session` para registrar o verificar el perfil en nuestra BD. La primera cuenta Google que ingresa queda registrada como OWNER — ninguna otra puede acceder después. Si necesita cambiar su Gmail, puede hacerlo desde `PATCH /auth/owner-email` mientras tenga sesión activa. Si pierde acceso a su cuenta de Google, la recuperación debe hacerse desde el dashboard de Supabase.
+**Dueño y empleados:** todos se autentican con email y contraseña vía el formulario de login. No hay OAuth de terceros (sin Google, sin GitHub). El dueño usa su email real. Los empleados usan email sintético `{username}@smartbite.local` — no tienen recuperación de contraseña por email. El dueño resetea sus contraseñas desde AUTH-2.
 
-**Empleados:** se autentican con usuario y contraseña. El email en Supabase Auth es sintético: `{username}@smartbite.local`. No tienen recuperación de contraseña por email — el dueño resetea sus contraseñas desde el panel de empleados.
+En desarrollo local, Supabase CLI (`supabase start`) levanta la instancia de Auth local. Las features de autenticación se prueban contra esa instancia sin depender de la nube.
 
 **Validación del JWT en NestJS:**
 1. El cliente envía `Authorization: Bearer <token>` en cada request.
@@ -130,7 +131,7 @@ Se usa `@nestjs/cache-manager` con store en memoria. Sin Redis — no se justifi
 src/
 ├── app.module.ts
 ├── main.ts
-├── auth/               # LOGIN-1: login, logout, refresh, Google OAuth, reset
+├── auth/               # AUTH-1: login, logout, refresh, reset
 ├── users/              # AUTH-2: empleados y roles
 ├── products/           # OPS-1
 ├── ingredients/        # OPS-2, OPS-7

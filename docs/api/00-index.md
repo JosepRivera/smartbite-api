@@ -14,9 +14,6 @@
 | POST   | /auth/refresh         | Renovar access token                     | Público |
 | POST   | /auth/forgot-password | Solicitar recuperación de contraseña     | Público |
 | POST   | /auth/reset-password  | Cambiar contraseña con token de recovery | JWT     |
-| GET    | /auth/google          | Obtener URL de OAuth de Google           | Público |
-| GET    | /auth/callback        | Callback OAuth — intercambiar code       | Público |
-| PATCH  | /auth/owner-email     | Actualizar Gmail del dueño               | OWNER   |
 
 ---
 

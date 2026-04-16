@@ -25,7 +25,7 @@
 
 SmartBite es un sistema de gestión para restaurantes y negocios de comida rápida en el Perú, diseñado para negocios con entre 3 y 20 empleados que operan con pagos mixtos (efectivo, Yape, Plin, Ágora). El backend centraliza ventas, stock, recetas, reportes y cierre de caja. Incorpora inteligencia artificial para predicción de demanda (Holt-Winters + Claude API) y consultas en lenguaje natural (Text-to-SQL). Los pagos digitales se resuelven con una app Android nativa en Kotlin que intercepta notificaciones de Yape, Plin y Ágora con `NotificationListenerService`, sin depender de terceros.
 
-La autenticación es gestionada por **Supabase Auth**: el dueño entra con Google OAuth, los empleados con usuario y contraseña. NestJS no firma tokens ni gestiona sesiones — solo los valida.
+La autenticación es gestionada por **Supabase Auth**: todos los usuarios (dueño y empleados) entran con email y contraseña. NestJS no firma tokens ni gestiona sesiones — solo los valida.
 
 ---
 
@@ -54,33 +54,6 @@ La autenticación es gestionada por **Supabase Auth**: el dueño entra con Googl
 | PAG-1  | Listener Yape / Plin / Ágora | ⏳ |
 
 ✅ Completado · 🔧 En desarrollo · ⏳ Pendiente
-
-### Orden de implementación
-
-El orden respeta dependencias: cada módulo necesita los anteriores para funcionar correctamente.
-
-| # | Código | Depende de |
-|---|--------|-----------|
-| 1 | AUTH-1, AUTH-2 | — |
-| 2 | OPS-1 | — |
-| 3 | OPS-2 | — |
-| 4 | OPS-3 | OPS-1, OPS-2 |
-| 5 | OPS-4 | OPS-1, OPS-3 (descuento de stock) |
-| 6 | OPS-5 | — |
-| 7 | OPS-6 | OPS-4 |
-| 8 | OPS-7 | OPS-2, OPS-4 |
-| 9 | REP-1 | OPS-4, OPS-5 |
-| 10 | REP-2 | OPS-4 |
-| 11 | REP-3 | OPS-1, OPS-2, OPS-3 |
-| 12 | REP-4 | OPS-4, OPS-5 |
-| 13 | IA-1 | Cualquier módulo con datos |
-| 14 | IA-2 | OPS-4 (historial de ventas) |
-| 15 | IA-3 | IA-2, OPS-2, OPS-3 |
-| 16 | IA-4 | IA-2 |
-| 17 | VOZ-1 | OPS-2, OPS-4, OPS-5 |
-| 18 | PAG-1 | OPS-4 |
-
-**Próximo:** OPS-4 — registro de ventas con cobro.
 
 ---
 
@@ -112,15 +85,13 @@ Levanta PostgreSQL local + API en modo watch. Al iniciar aplica migraciones, vis
 
 ```bash
 pnpm test           # Tests unitarios (Vitest)
-pnpm test:e2e       # Tests de integración en Docker aislado
-pnpm test:e2e:down  # Limpia los contenedores de test
+pnpm test:e2e       # Tests de integración en Docker aislado (limpia automáticamente)
 ```
 
 ### Producción / Staging (Supabase cloud)
 
 ```bash
-# 1. Ejecutar prisma/supabase-setup.sql en el SQL Editor de Supabase (solo una vez)
-# 2. Actualizar .env con las URLs de Supabase cloud (Settings → Database)
+# 1. Actualizar .env con las URLs de Supabase cloud (Settings → Database)
 pnpm db:baseline    # Registrar el baseline de migraciones (solo primera vez)
 docker compose up   # Inicia la API contra Supabase cloud
 ```
@@ -129,21 +100,20 @@ docker compose up   # Inicia la API contra Supabase cloud
 
 ## Comandos
 
-| Comando            | Descripción                                                               |
-| ------------------ | ------------------------------------------------------------------------- |
-| `pnpm dev`         | Inicia PostgreSQL local + API en modo watch                               |
-| `pnpm dev:build`   | Reconstruye imágenes (usar al agregar dependencias o cambiar Dockerfile)  |
-| `pnpm stop`        | Detiene los contenedores (la BD persiste en el volumen Docker)            |
-| `pnpm shell`       | Shell interactiva dentro del contenedor de la app                         |
-| `pnpm db:migrate`  | Crea y aplica una nueva migración                                         |
-| `pnpm db:baseline` | Registra el baseline en Supabase cloud (solo primera vez)                 |
-| `pnpm db:seed`     | Carga 6 meses de datos sintéticos de prueba                               |
-| `pnpm db:gen`      | Regenera el cliente Prisma (solo si editás el schema fuera de Docker)     |
-| `pnpm test`        | Tests unitarios con Vitest                                                |
-| `pnpm test:e2e`    | Tests de integración en Docker                                            |
-| `pnpm lint`        | Lint y auto-fix con Biome                                                 |
-| `pnpm check`       | Lint + format en un solo comando                                          |
-| `pnpm build`       | Compila TypeScript a `dist/`                                              |
+| Comando               | Descripción                                                           |
+| --------------------- | --------------------------------------------------------------------- |
+| `pnpm dev`            | Inicia la API en Docker en modo watch (BD: Supabase cloud)            |
+| `pnpm stop`           | Detiene los contenedores                                              |
+| `pnpm dev:clean`      | Detiene contenedores y limpia volúmenes Docker                        |
+| `pnpm db:migrate`     | Crea y aplica una nueva migración (dev)                               |
+| `pnpm db:deploy`      | Aplica migraciones pendientes (producción/staging)                    |
+| `pnpm db:baseline`    | Registra el baseline en Supabase cloud (solo primera vez)             |
+| `pnpm db:generate`    | Regenera el cliente Prisma                                            |
+| `pnpm db:seed`        | Carga datos sintéticos de prueba                                      |
+| `pnpm test`           | Tests unitarios con Vitest                                            |
+| `pnpm test:e2e`       | Tests de integración en Docker (limpia automáticamente al terminar)   |
+| `pnpm lint`           | Lint y auto-fix con Biome                                             |
+| `pnpm build`          | Compila TypeScript a `dist/`                                          |
 
 ---
 
