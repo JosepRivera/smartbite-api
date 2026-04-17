@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { validate } from "@/config/env";
+import { AlertsModule } from "./alerts/alerts.module";
 import { AuthModule } from "./auth/auth.module";
 import { ExpensesModule } from "./expenses/expenses.module";
 import { IngredientsModule } from "./ingredients/ingredients.module";
@@ -26,6 +27,7 @@ import { UsersModule } from "./users/users.module";
 		RecipesModule,
 		SalesModule,
 		ExpensesModule,
+		AlertsModule,
 	],
 })
 export class AppModule {}

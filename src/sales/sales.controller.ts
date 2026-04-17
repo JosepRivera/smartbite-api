@@ -16,6 +16,8 @@ import { JwtGuard } from "@/common/guards/jwt.guard";
 import { RolesGuard } from "@/common/guards/roles.guard";
 import { Role } from "@/prisma/prisma.service";
 // biome-ignore lint/style/useImportType: required for nestjs-zod ZodValidationPipe runtime metatype
+import { CorrectSaleDto } from "./dto/correct-sale.dto";
+// biome-ignore lint/style/useImportType: required for nestjs-zod ZodValidationPipe runtime metatype
 import { CreateSaleDto } from "./dto/create-sale.dto";
 // biome-ignore lint/style/useImportType: required for nestjs-zod ZodValidationPipe runtime metatype
 import { PaySaleDto } from "./dto/pay-sale.dto";
@@ -48,18 +50,30 @@ export class SalesController {
 	@Roles(Role.OWNER, Role.CASHIER, Role.WAITER, Role.COOK)
 	@ApiOperation({
 		summary: "Listar ventas",
-		description: "Lista ventas con filtros opcionales por estado y fecha (YYYY-MM-DD).",
+		description:
+			"Lista ventas. OWNER: filtros completos (status, date, user_id). Otros roles: solo órdenes OPEN del día.",
 	})
 	@ApiQuery({
 		name: "status",
 		required: false,
 		enum: ["OPEN", "PAID_CASH", "PAID_YAPE", "PAID_PLIN", "PAID_AGORA", "CANCELLED"],
+		description: "Solo aplica para OWNER",
 	})
-	@ApiQuery({ name: "date", required: false, description: "Fecha en formato YYYY-MM-DD" })
+	@ApiQuery({ name: "date", required: false, description: "YYYY-MM-DD. Solo aplica para OWNER." })
+	@ApiQuery({
+		name: "user_id",
+		required: false,
+		description: "UUID del empleado. Solo aplica para OWNER.",
+	})
 	@ApiResponse({ status: 200, description: "Lista de ventas." })
 	@ApiResponse({ status: 401, description: "Token ausente o inválido." })
-	findAll(@Query("status") status?: string, @Query("date") date?: string) {
-		return this.salesService.findAll(status, date);
+	findAll(
+		@CurrentUser() user: { sub: string; role: string },
+		@Query("status") status?: string,
+		@Query("date") date?: string,
+		@Query("user_id") userId?: string,
+	) {
+		return this.salesService.findAll(user.role, status, date, userId);
 	}
 
 	@Get(":id")
@@ -108,5 +122,26 @@ export class SalesController {
 	@ApiResponse({ status: 422, description: "La venta no está en estado OPEN." })
 	cancel(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: { sub: string }) {
 		return this.salesService.cancel(id, user.sub);
+	}
+
+	@Patch(":id")
+	@Roles(Role.OWNER)
+	@ApiOperation({
+		summary: "Corregir venta (OPS-6)",
+		description:
+			"Corrige los ítems o el método de pago de una venta. Solo OWNER. No revierte stock. No se puede corregir una venta CANCELLED.",
+	})
+	@ApiResponse({ status: 200, description: "Venta corregida." })
+	@ApiResponse({ status: 400, description: "UUID mal formado o validación fallida." })
+	@ApiResponse({ status: 401, description: "Token ausente o inválido." })
+	@ApiResponse({ status: 403, description: "Rol sin permiso." })
+	@ApiResponse({ status: 404, description: "Venta no encontrada." })
+	@ApiResponse({ status: 422, description: "La venta está cancelada." })
+	correct(
+		@Param("id", ParseUUIDPipe) id: string,
+		@CurrentUser() user: { sub: string },
+		@Body() dto: CorrectSaleDto,
+	) {
+		return this.salesService.correct(id, user.sub, dto);
 	}
 }

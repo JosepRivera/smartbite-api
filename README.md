@@ -40,8 +40,8 @@ La autenticación es gestionada por **Supabase Auth**: todos los usuarios (dueñ
 | OPS-3  | Recetas por producto | ✅ |
 | OPS-4  | Registro de ventas con cobro | ✅ |
 | OPS-5  | Gastos y compras | ✅ |
-| OPS-6  | Historial y corrección de ventas | ⏳ |
-| OPS-7  | Alertas de stock bajo | ⏳ |
+| OPS-6  | Historial y corrección de ventas | ✅ |
+| OPS-7  | Alertas de stock bajo | ✅ |
 | REP-1  | Dashboard en tiempo real | ⏳ |
 | REP-2  | Reportes por período | ⏳ |
 | REP-3  | Rentabilidad por producto | ⏳ |
@@ -131,5 +131,6 @@ docker compose up   # Inicia la API contra Supabase cloud
 | [`docs/architecture.md`](./docs/architecture.md) | Stack, módulos y decisiones técnicas |
 | [`docs/database-schema.md`](./docs/database-schema.md) | Tablas, relaciones, índices y constraints |
 | [`docs/api/01-auth.md`](./docs/api/01-auth.md) | Endpoints de autenticación |
+| [`docs/api/02-ops.md`](./docs/api/02-ops.md) | Productos, insumos, recetas, ventas, gastos, alertas |
 | [`docs/api/02-users.md`](./docs/api/02-users.md) | Gestión de empleados y roles |
 | [`docs/api/06-payments.md`](./docs/api/06-payments.md) | Listener de pagos digitales |

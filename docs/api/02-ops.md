@@ -61,8 +61,6 @@ Autenticación, permisos, not found, UUID inválido — formato plano:
 
 ---
 
----
-
 ## Índice
 
 - [Productos](#productos)
@@ -90,6 +88,11 @@ Autenticación, permisos, not found, UUID inválido — formato plano:
   - [Eliminar gasto · DELETE /expenses/:id](#eliminar-gasto--delete-expensesid)
   - [Obtener receta · GET /recipes/:productId](#obtener-receta--get-recipesproductid)
   - [Crear o reemplazar · PUT /recipes/:productId](#crear-o-reemplazar--put-recipesproductid)
+- [Historial y corrección de ventas (OPS-6)](#historial-y-corrección-de-ventas-ops-6)
+  - [Listar ventas con filtro por empleado · GET /sales?user_id=](#listar-ventas-con-filtro-por-empleado--get-salesuser_id)
+  - [Corregir venta · PATCH /sales/:id](#corregir-venta--patch-salesid)
+- [Alertas de stock bajo (OPS-7)](#alertas-de-stock-bajo-ops-7)
+  - [GET /alerts/stock](#get-alertsstock)
 
 ---
 
@@ -956,3 +959,152 @@ Authorization: Bearer <token>
 | 401 | Token ausente o inválido | — |
 | 403 | Rol sin permiso | — |
 | 404 | Gasto no encontrado | `"Gasto no encontrado"` |
+
+---
+
+## Historial y corrección de ventas (OPS-6)
+
+> **OWNER:** acceso completo — filtros por estado, fecha y empleado.
+> **CASHIER / WAITER / COOK:** solo ven órdenes `OPEN` del día actual. Los filtros se ignoran.
+
+### Listar ventas con filtro por empleado · GET /sales?user_id=
+
+Solo disponible para OWNER. Los demás roles ven solo OPEN del día sin filtros.
+
+**Autenticación:** Bearer token · **Roles:** Todos
+
+#### Query parameters
+
+| Parámetro | Tipo | Roles | Descripción |
+| --- | --- | --- | --- |
+| `status` | enum | OWNER | Estado de la venta |
+| `date` | string | OWNER | Fecha `YYYY-MM-DD` |
+| `user_id` | UUID | OWNER | Filtra por empleado que registró la venta |
+
+```
+GET /api/v1/sales?user_id=e510d36a-10ea-45b9-9415-0e9a3d201643
+Authorization: Bearer <token>
+```
+
+#### Errores
+
+| Status | Causa | Mensaje |
+| --- | --- | --- |
+| 400 | `status` inválido | `"Estado inválido: INVALID"` |
+| 400 | `date` mal formada | `"Fecha inválida. Formato esperado: YYYY-MM-DD"` |
+| 401 | Token ausente o inválido | — |
+
+---
+
+### Corregir venta · PATCH /sales/:id
+
+Corrige los ítems o el método de pago de una venta existente. Solo `OWNER`. No revierte stock. No aplica a ventas `CANCELLED`.
+
+**Autenticación:** Bearer token · **Roles:** OWNER
+
+#### Request body (al menos uno requerido)
+
+| Campo | Tipo | Requerido | Validación | Descripción |
+| --- | --- | --- | --- | --- |
+| `items` | array | ❌ | mín. 1 | Nuevos ítems — reemplaza los existentes completos |
+| `items[].product_id` | UUID | ✅ si items | | Producto activo |
+| `items[].quantity` | integer | ✅ si items | > 0 | Cantidad |
+| `payment_method` | enum | ❌ | `CASH`\|`YAPE`\|`PLIN`\|`AGORA` | Cambia el método de pago (actualiza status) |
+
+> Body vacío → `400`. Debe especificar `items` o `payment_method` (o ambos).
+
+```json
+{ "items": [{ "product_id": "89c04027-...", "quantity": 2 }] }
+```
+
+```json
+{ "payment_method": "YAPE" }
+```
+
+```json
+{
+  "items": [{ "product_id": "89c04027-...", "quantity": 2 }],
+  "payment_method": "YAPE"
+}
+```
+
+#### Respuesta exitosa · `200 OK`
+
+Devuelve la venta completa con los datos corregidos (mismo formato que POST /sales).
+
+```json
+{
+  "data": {
+    "id": "dd05a409-a1a1-46f3-84da-45e8bcdb6b84",
+    "status": "OPEN",
+    "total": 2400,
+    "table_number": null,
+    "customer_name": null,
+    "created_at": "2026-04-16T23:41:58.966Z",
+    "user": { "id": "...", "name": "Dueño SmartBite", "username": "owner" },
+    "items": [
+      {
+        "id": "e4c48d81-...",
+        "product_id": "e9da7c23-...",
+        "product_name": "Papas Fritas",
+        "quantity": 3,
+        "unit_price": 800,
+        "subtotal": 2400
+      }
+    ]
+  }
+}
+```
+
+#### Errores
+
+| Status | Causa | Mensaje |
+| --- | --- | --- |
+| 400 | UUID mal formado | `"Validation failed (uuid is expected)"` |
+| 400 | Body vacío | `"Debe especificar al menos items o payment_method"` |
+| 400 | `payment_method` inválido | `"Invalid option: expected one of \"CASH\"\|\"YAPE\"\|\"PLIN\"\|\"AGORA\""` |
+| 401 | Token ausente o inválido | — |
+| 403 | Rol sin permiso | — |
+| 404 | Venta no encontrada | `"Venta no encontrada"` |
+| 404 | Producto no encontrado o inactivo | `"Producto no encontrado o inactivo: {id}"` |
+| 422 | Venta está cancelada | `"No se puede corregir una venta cancelada"` |
+
+---
+
+## Alertas de stock bajo (OPS-7)
+
+### GET /alerts/stock
+
+Devuelve todos los insumos cuyo stock actual es igual o menor al umbral mínimo configurado (`min_stock`). El campo `shortage` indica cuántas unidades faltan para alcanzar el umbral.
+
+**Autenticación:** Bearer token · **Roles:** Todos
+
+```
+GET /api/v1/alerts/stock
+Authorization: Bearer <token>
+```
+
+#### Respuesta exitosa · `200 OK`
+
+```json
+{
+  "data": [
+    {
+      "id": "b23099be-d675-4118-8c64-b7d113511a6e",
+      "name": "Pan de hamburguesa",
+      "unit": "unidad",
+      "stock": 19,
+      "min_stock": 20,
+      "shortage": 1
+    }
+  ]
+}
+```
+
+> Si no hay insumos bajo el umbral, `data` es un array vacío `[]`.
+
+#### Errores
+
+| Status | Causa | Mensaje |
+| --- | --- | --- |
+| 401 | Token ausente o inválido | — |
